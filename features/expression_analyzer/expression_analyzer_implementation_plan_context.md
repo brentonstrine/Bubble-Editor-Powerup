@@ -66,16 +66,16 @@ This phase enhances the UI object from Phase 1, enabling it to render parsed dat
 
 ### Phase 4: Editor Integration (Context Menu & Data Retrieval)
 
-This final phase orchestrates the entire feature, following the extension's established architecture for communication between the isolated content script and the main world.
+This final phase orchestrates the entire feature using a `MutationObserver` to inject triggers directly into the UI, following the extension's established architecture.
 
-*   **Task:** Implement the orchestration logic inside `expression_analyzer.js`.
+*   **Task:** Implement the orchestration logic inside `expression_analyzer.js` to inject icon-based triggers inline.
 *   **Implementation Details:**
-    1.  **Context Menu (Isolated World):** The script will add a global `contextmenu` event listener. It will inspect the event target to determine if the user right-clicked on a valid property editor input.
-    2.  **Data Request (Isolated World -> Background):** When "Analyze Expression" is clicked, the content script will send a message to `background.js`. This message will contain the necessary identifiers to locate the data (e.g., the selected element's ID and the property key from a `data-*` attribute).
+    1.  **Icon Injection (Isolated World):** The script will use a `MutationObserver` to watch for when expression elements are added to the DOM. For each expression, it will inject a small, clickable "analyze" icon next to it. This ensures icons are present for all expressions, even those loaded dynamically.
+    2.  **Icon Click & Data Request (Isolated World -> Background):** When an "analyze" icon is clicked, the content script will find the relevant identifiers from the surrounding DOM elements (e.g., the selected element's ID and the property key from a `data-*` attribute on a parent input). It will then send a message to `background.js` with this information.
     3.  **Data Retrieval (Main World):**
         *   The `background.js` script will have a listener for this message.
         *   Upon receipt, it will use `chrome.scripting.executeScript` to run a small, targeted function in the **main world** of the active tab.
         *   This main-world function will use the provided identifiers to access `window.appquery()` and retrieve the raw expression string. It will then return this string.
     4.  **Data Response (Background -> Isolated World):** The background script receives the expression string from the main world and sends it back to the content script in a response message.
     5.  **UI Activation (Isolated World):** The content script, upon receiving the expression string, will call the `modalUI` object's functions to inject and show the modal, pre-populating it with the retrieved data.
-*   **Acceptance Criteria:** Right-clicking on a dynamic expression in the Bubble editor shows the "Analyze Expression" option. Clicking it opens the modal with the correct expression already parsed and displayed.
+*   **Acceptance Criteria:** A small icon appears next to dynamic expressions. Clicking the icon opens the modal with the correct expression already parsed and displayed.

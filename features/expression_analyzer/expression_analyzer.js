@@ -47,43 +47,48 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     // --- Phase 4: Editor Integration ---
-    function addContextMenu() {
-        // This function adds the "Analyze Expression" option to the context menu.
-        // For now, we will just listen for right-clicks on the whole document.
-        // We can refine the selector later to target specific input fields.
-        document.addEventListener('contextmenu', function(event) {
-            // A more specific selector will be needed, e.g., 'input.dynamic-expression-input'
-            const target = event.target;
-            const isExpressionInput = target.matches('input, textarea'); // Example selector
+    function injectAnalysisIcon(expressionElement) {
+        // TODO: Create and style the icon element
+        const icon = document.createElement('span');
+        icon.innerText = '🔍'; // Placeholder icon
+        icon.style.cursor = 'pointer';
+        icon.style.marginLeft = '4px';
+        icon.title = 'Analyze Expression';
 
-            if (isExpressionInput) {
-                console.log("Right-clicked on a potential expression input:", target);
-                // In a real implementation, we would add a custom context menu item.
-                // For simplicity in this stage, we'll use a confirm dialog to simulate the flow.
-                if (confirm("Analyze Expression? (Simulation)")) {
-                    // 1. Get identifiers from the DOM
-                    const elementId = "some_element_id"; // TODO: Get this from the DOM
-                    const propertyKey = "data_source"; // TODO: Get this from a data-* attribute
+        icon.addEventListener('click', function(event) {
+            event.stopPropagation();
+            console.log("Analysis icon clicked for expression:", expressionElement.innerText);
 
-                    // 2. Send message to background script to retrieve data from the MAIN world
-                    chrome.runtime.sendMessage({
-                        action: "getExpressionData", // A new action for background.js
-                        elementId: elementId,
-                        propertyKey: propertyKey
-                    }, function(response) {
-                        if (response && response.expression) {
-                            // 5. UI Activation
-                            modalUI.show(response.expression);
-                        } else {
-                            console.error("Failed to get expression data.", response.error);
-                        }
-                    });
+            // 1. Get identifiers from the DOM
+            const elementId = "some_element_id"; // TODO: Get this from the DOM
+            const propertyKey = "data_source"; // TODO: Get this from a data-* attribute
+
+            // 2. Send message to background script to retrieve data from the MAIN world
+            chrome.runtime.sendMessage({
+                action: "getExpressionData", // A new action for background.js
+                elementId: elementId,
+                propertyKey: propertyKey
+            }, function(response) {
+                if (response && response.expression) {
+                    // 5. UI Activation
+                    modalUI.show(response.expression);
+                } else {
+                    console.error("Failed to get expression data.", response ? response.error : "No response");
                 }
-            }
-        }, true); // Use capture phase to ensure we get the event.
+            });
+        });
+
+        // TODO: Append the icon to the correct location within/after the expression element
+        expressionElement.appendChild(icon);
+    }
+
+    function initializeObserver() {
+        // TODO: Implement a MutationObserver to watch for expression elements being added to the DOM.
+        // On detection, call injectAnalysisIcon(newElement).
+        console.log("Initializing MutationObserver for Expression Analyzer...");
     }
 
     // Initialize the feature
-    addContextMenu();
+    initializeObserver();
 
 })();//👈👈 don't delete this, and don't put anything outside of this!!
