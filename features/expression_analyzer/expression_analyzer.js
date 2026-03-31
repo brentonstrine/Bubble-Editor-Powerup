@@ -1,7 +1,7 @@
 window.loadedCodelessLoveScripts ||= {};
 (function() {
-  console.log("❤️"+"Name of feature goes here");
-  let thisScriptKey = "example_feature";
+  console.log("❤️"+"Expression Analyzer");
+  let thisScriptKey = "expression_analyzer";
 
   /* ------------------------------------------------ */
   /* ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ Don't mess with this  ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ */

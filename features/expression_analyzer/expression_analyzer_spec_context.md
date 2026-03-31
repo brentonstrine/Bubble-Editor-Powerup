@@ -6,15 +6,19 @@ To provide Bubble developers with a tool that can deconstruct and visualize comp
 
 ## 2. User Story
 
-As a Bubble developer working with a complex data source, I want to be able to right-click any dynamic expression in the property editor and see it broken down into a clear, hierarchical view. This will allow me to quickly understand its logic, verify its correctness, and troubleshoot any issues without having to read the long, single-line expression string.
+As a Bubble developer, I want to be able to quickly analyze any complex expression. I want to right-click a dynamic expression in the property editor to see it broken down in a tool that will show me a clear, hierarchical view. This will allow me to quickly understand its logic, verify its correctness, and troubleshoot any issues without having to read a long, single-line expression string.
 
 ## 3. Functional Requirements
 
-*   **Trigger:** The feature will be triggered via a new option in the right-click context menu when a user right-clicks on a property input field that contains a dynamic Bubble expression. The option will be labeled "Analyze Expression".
+*   **Activation:**
+    *   The feature will be triggered via a new option in the right-click context menu labeled "Analyze Expression" when a user right-clicks on a property input field containing a dynamic Bubble expression.
+
 *   **UI - Popup Modal:**
-    *   Upon clicking "Analyze Expression", a modal window will appear, overlaying the Bubble editor.
+    *   Upon activation, a modal window will appear, overlaying the Bubble editor.
     *   The modal will have a clear title, such as "Expression Analysis".
+    *   It will contain a text input area for pasting expressions. If triggered via the context menu, this area will be pre-populated with the selected expression.
     *   It will contain a pre-formatted block to display the structured expression.
+
 *   **Expression Display Logic:**
     *   The core feature of the modal is to display the expression in a tree-like structure.
     *   Each component of the expression (e.g., `Do a search for...`, a field name, a modifier like `:first item`) will be rendered on its own line.
