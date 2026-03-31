@@ -42,4 +42,4 @@ Do a search for Invoices
 2.  **Data Retrieval:** On activation, the script must identify the underlying Bubble element and the specific property containing the expression string. It will use the `window.appquery()` API to read this data.
 3.  **Parsing Engine:** Develop a core JavaScript function that takes the raw expression string as input. This function will be responsible for splitting the string by Bubble's various delimiters (`'s`, `:`, etc.) and interpreting the structure.
 4.  **Structured Output:** The parser will convert the string into a structured data format, such as an array of objects, where each object contains the text for a line and its indentation level (e.g., `{ text: "Do a search for Invoices", depth: 0 }`).
-5.  **Rendering:** A simple UI component (e.g., a React component for the modal) will take the structured data from the parser and render it into the final, indented HTML view.
+5.  **Rendering:** A simple UI component will take the structured data from the parser and render it into the final, indented HTML view.

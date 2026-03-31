@@ -194,6 +194,17 @@
     "contributors": ["george", "brenton"]
   },
   {
+    "key": "expression_analyzer",
+    "category": "Expressions",
+    "name": "Expression Analyzer",
+    "description": "Right-click a dynamic expression to open a tool that deconstructs and visualizes it in a clear, hierarchical view, making it easier to read and debug.",
+    "jsFile": "features/expression_analyzer/expression_analyzer.js",
+    "default": true,
+    "contributors": [
+      "brenton"
+    ]
+  },
+  {
     "key": "property_editor_expression_composers_full_width",
     "category": "Expression Composers",
     "name": "Full Width Expression Composers",
