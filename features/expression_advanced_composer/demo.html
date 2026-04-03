@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Slot‑&‑Token Demo (Full Keyboard Dropdown)</title>
+<style>
+  body {font-family: Inter, sans-serif; background:#1e1e1e; color:#eee; padding:2rem;}
+  .composer {display:flex; flex-wrap:wrap; align-items:center; gap:4px; padding: 10px; border: 1px solid #333; border-radius: 8px; min-height: 48px; background: #1a1a1a;}
+  .slot {
+    display:inline-block;
+    width:20px; min-width:20px; height:28px; vertical-align:middle;
+    outline:none; border:1px dashed #444; background:rgba(255,255,255,0.05);
+    caret-color: #fff; cursor:text;
+    transition: background 0.2s, border-color 0.2s;
+    border-radius: 4px;
+    line-height: 28px;
+    padding: 0 4px;
+    box-sizing: border-box;
+  }
+  .slot:hover { border-color: #666; background:rgba(255,255,255,0.1); }
+  .slot:focus { border:1px solid #4caf50; background:rgba(76, 175, 80, 0.1); }
+  .slot:empty::before { content: '+'; color: #666; font-size: 12px; display: block; text-align: center; }
+  .slot:focus:empty::before { content: ''; }
+  
+  .slot.invalid { border: 2px solid #ff4444; background: rgba(255, 68, 68, 0.2); }
+  .slot.invalid::before { content: '!'; color: #ff4444; font-weight: bold; display: block; text-align: center; font-size: 12px; }
+  
+  .slot.drop-target { border: 2px solid #ffeb3b; background: rgba(255, 235, 59, 0.4); }
+  
+  .token {
+    display:inline-block; padding:2px 8px; border-radius:4px; cursor:pointer;
+    user-select:none; font-weight:600; font-size:0.95rem;
+    transition: transform 0.1s;
+    margin: 0 2px;
+    outline: none;
+    border: 2px solid transparent;
+  }
+  .token.dragging { opacity: 0.2; transform: scale(0.9); }
+  
+  .token.pill-text { background: #6b9eff; color: #fff; }
+  .token.pill-number { background: #6bffb5; color: #000; }
+  .token.pill-operator { background: #333; color: #eee; border: 1px solid #555; }
+  
+  .token:focus { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+  .token.error { border: 2px solid #ff4444 !important; box-shadow: 0 0 8px rgba(255,68,68,0.5); }
+
+  .dropdown {position:absolute; background:#2c2c2c; border:1px solid #555; border-radius:4px; margin-top:2px; z-index:10; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-height: 300px; overflow-y: auto;}
+  .dropdown .option {padding:8px 16px; cursor:pointer;}
+  .dropdown .option:hover, .dropdown .option.highlighted {background:#444;}
+  .dropdown .header {font-size: 0.7rem; color: #888; text-transform: uppercase; padding: 4px 16px; background: #222;}
+</style>
+</head>
+<body>
+<h2>Slot‑&‑Token Demo (Keyboard Dropdown)</h2>
+<p style="font-size: 0.9rem; color: #888;">Use <b>Up/Down Arrows</b> and <b>Enter</b> to select from the dropdown. <b>Left/Right Arrows</b> to navigate the chain.</p>
+<div class="composer" id="composer">
+</div>
+
+<script>
+/**
+ * Schema & State
+ */
+const TOKEN_DEFS = [
+  { label: "My Text", id: "val_text", type: "Text", left: null, right: "Text", needsArg: false, canHaveValue: true },
+  { label: "My Number", id: "val_num", type: "Number", left: null, right: "Number", needsArg: false, canHaveValue: true },
+  { label: ":append", id: "append", type: "Text", left: "Text", right: "Text", needsArg: true, argType: "Text" },
+  { label: ":uppercase", id: "uppercase", type: "Text", left: "Text", right: "Text", needsArg: false },
+  { label: ":lowercase", id: "lowercase", type: "Text", left: "Text", right: "Text", needsArg: false },
+  { label: ":length", id: "length", type: "Number", left: "Text", right: "Number", needsArg: false },
+  { label: ":toText", id: "toText", type: "Text", left: "Number", right: "Text", needsArg: false },
+  { label: ":plus", id: "plus", type: "Number", left: "Number", right: "Number", needsArg: true, argType: "Number" },
+  { label: ":concat", id: "concat", type: "Text", left: ["Text", "Number"], right: "Text", needsArg: true, argType: ["Text", "Number"] }
+];
+let globalTokenCounter = 0;
+
+// ---------- UI Creation ----------
+
+function createTokenElement(def, instanceId = null, existingValue = null) {
+  if (!instanceId) globalTokenCounter++;
+  const id = instanceId || globalTokenCounter;
+  const span = document.createElement('span');
+  span.className = `token pill-${def.type.toLowerCase()} ${def.left ? 'pill-operator' : 'is-data'}`;
+  span.textContent = existingValue || def.label;
+  span.tabIndex = 0;
+  span.dataset.id = id;
+  span.dataset.defId = def.id;
+  span.dataset.type = def.type;
+  span.dataset.left = Array.isArray(def.left) ? JSON.stringify(def.left) : def.left;
+  span.dataset.right = def.right;
+  span.dataset.needsArg = def.needsArg;
+  span.dataset.argType = Array.isArray(def.argType) ? JSON.stringify(def.argType) : def.argType;
+  span.dataset.isRoot = def.left === null;
+  span.dataset.canHaveValue = def.canHaveValue || false;
+
+  span.draggable = true;
+  span.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('token-instance-id', span.dataset.id); hideDropdown();
+    setTimeout(() => span.classList.add('dragging'), 0);
+  });
+  span.addEventListener('dragend', () => span.classList.remove('dragging'));
+
+  const selectToken = () => {
+      span.contentEditable = "true";
+      setTimeout(() => {
+          const range = document.createRange(); range.selectNodeContents(span);
+          const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      }, 0);
+  };
+
+  span.addEventListener('focus', (e) => {
+      if (def.left !== null) showDropdown(span);
+      else selectToken();
+  });
+
+  span.addEventListener('mousedown', (e) => {
+      if (document.activeElement !== span) {
+          span.focus();
+          if (def.left === null) e.preventDefault();
+      }
+  });
+
+  span.addEventListener('keydown', e => {
+      if (activeDropdown && handleDropdownKeys(e)) return;
+      
+      if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+      if (e.key === 'ArrowRight') { 
+          e.preventDefault(); 
+          hideDropdown(); 
+          span.blur(); 
+          if(span.nextElementSibling) span.nextElementSibling.focus(); 
+      }
+      if (e.key === 'ArrowLeft') { 
+          e.preventDefault(); 
+          hideDropdown(); 
+          span.blur(); 
+          if(span.previousElementSibling) span.previousElementSibling.focus(); 
+      }
+  });
+
+  span.addEventListener('blur', () => {
+      span.contentEditable = "false";
+      if (span.textContent.trim() === "" && def.canHaveValue) span.textContent = def.label;
+      syncAndValidate();
+  });
+  return span;
+}
+
+function createSlotElement() {
+  const slot = document.createElement('div');
+  slot.className = 'slot'; slot.contentEditable = 'true';
+  slot.addEventListener('focus', showDropdown);
+  slot.addEventListener('keydown', e => { 
+      if (activeDropdown && handleDropdownKeys(e)) return;
+      if(e.key === 'Enter' || e.key === ' ') e.preventDefault(); 
+      if (e.key === 'ArrowRight') { 
+          e.preventDefault(); 
+          hideDropdown(); 
+          if(slot.nextElementSibling) slot.nextElementSibling.focus(); 
+      }
+      if (e.key === 'ArrowLeft') { 
+          e.preventDefault(); 
+          hideDropdown(); 
+          if(slot.previousSibling) slot.previousSibling.focus(); 
+      }
+  });
+  slot.addEventListener('blur', e => {
+     slot.textContent = '';
+     if (!e.relatedTarget || (!e.relatedTarget.closest('.slot') && !e.relatedTarget.closest('.dropdown') && !e.relatedTarget.closest('.token'))) hideDropdown();
+  });
+  slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drop-target'); });
+  slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'));
+  slot.addEventListener('drop', handleDrop);
+  return slot;
+}
+
+// ---------- Dropdown Logic (Keyboard Aware) ----------
+let activeDropdown = null;
+let highlightedIndex = -1;
+
+function showDropdown(anchorArg) {
+  const anchor = (anchorArg instanceof Event) ? anchorArg.target : anchorArg;
+  if (!anchor || !anchor.classList) return;
+  if (anchor.classList.contains('is-data') && anchor.contentEditable === "true") return;
+  if (anchor.classList.contains('dragging')) return;
+  hideDropdown();
+
+  const isToken = anchor.classList.contains('token');
+  const rect = anchor.getBoundingClientRect();
+  const contextToken = isToken ? anchor.previousElementSibling?.previousElementSibling : anchor.previousElementSibling;
+  
+  const lRight = contextToken ? contextToken.dataset.right : null;
+  const lNeedsArg = contextToken ? (contextToken.dataset.needsArg === "true") : false;
+  const lArgType = contextToken ? contextToken.dataset.argType : null;
+
+  activeDropdown = document.createElement('div'); 
+  activeDropdown.className = 'dropdown';
+  activeDropdown.style.left = rect.left + 'px'; 
+  activeDropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+
+  // State for keyboard nav
+  highlightedIndex = -1;
+  activeDropdown.anchorElement = anchor;
+
+  if (!lRight) {
+    addHeader(activeDropdown, "Data Sources");
+    TOKEN_DEFS.filter(d => d.left === null).forEach(def => addOption(activeDropdown, anchor, def));
+  } else if (lNeedsArg) {
+    addHeader(activeDropdown, "Pick Argument");
+    const allowed = lArgType.startsWith('[') ? JSON.parse(lArgType) : [lArgType];
+    TOKEN_DEFS.filter(d => d.left === null).forEach(def => { if (allowed.includes(def.type) || allowed.includes("Any")) addOption(activeDropdown, anchor, def); });
+  } else {
+    addHeader(activeDropdown, `${lRight} Actions`);
+    TOKEN_DEFS.filter(d => d.left !== null).forEach(def => {
+        const allowedLeft = Array.isArray(def.left) ? def.left : [def.left];
+        if (allowedLeft.includes(lRight) || allowedLeft.includes("Any")) addOption(activeDropdown, anchor, def);
+    });
+  }
+  document.body.appendChild(activeDropdown);
+}
+
+function handleDropdownKeys(e) {
+  const options = Array.from(activeDropdown.querySelectorAll('.option'));
+  if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      highlightedIndex = (highlightedIndex + 1) % options.length;
+      updateHighlight(options);
+      return true;
+  }
+  if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlightedIndex = (highlightedIndex - 1 + options.length) % options.length;
+      updateHighlight(options);
+      return true;
+  }
+  if (e.key === 'Enter') {
+      if (highlightedIndex >= 0) {
+          e.preventDefault();
+          options[highlightedIndex].click();
+          return true;
+      }
+  }
+  if (e.key === 'Escape') {
+      hideDropdown();
+      return true;
+  }
+  return false;
+}
+
+function updateHighlight(options) {
+    options.forEach((opt, idx) => {
+        opt.classList.toggle('highlighted', idx === highlightedIndex);
+        if (idx === highlightedIndex) opt.scrollIntoView({ block: 'nearest' });
+    });
+}
+
+function addHeader(p, t) { const d = document.createElement('div'); d.className = 'header'; d.textContent = t; p.appendChild(d); }
+
+function addOption(p, anchor, def) {
+  const i = document.createElement('div'); 
+  i.className = 'option';
+  i.textContent = def.label; 
+  i.addEventListener('mousedown', ev => ev.preventDefault());
+  i.addEventListener('click', () => {
+    const isToken = anchor.classList.contains('token');
+    const newToken = createTokenElement(def);
+    if (isToken) anchor.replaceWith(newToken);
+    else anchor.parentNode.insertBefore(newToken, anchor.nextSibling);
+    syncAndValidate();
+    const nextSlot = newToken.nextElementSibling; if(nextSlot) { nextSlot.focus(); }
+  });
+  p.appendChild(i);
+}
+
+function hideDropdown() { if(activeDropdown){activeDropdown.remove(); activeDropdown = null; highlightedIndex = -1;} }
+
+// ---------- Logic Architecture ----------
+function syncAndValidate() {
+  const composer = document.getElementById('composer');
+  const kids = Array.from(composer.children);
+  for(let i=kids.length-1; i>0; i--) { if(kids[i].classList.contains('slot') && kids[i-1].classList.contains('slot')) kids[i].remove(); }
+  if (composer.children.length === 0) composer.appendChild(createSlotElement());
+  const currentTokens = composer.querySelectorAll('.token');
+  currentTokens.forEach(t => {
+      if (!t.previousElementSibling || !t.previousElementSibling.classList.contains('slot')) t.parentNode.insertBefore(createSlotElement(), t);
+      if (!t.nextElementSibling || !t.nextElementSibling.classList.contains('slot')) t.parentNode.insertBefore(createSlotElement(), t.nextSibling);
+  });
+  const elements = Array.from(composer.children);
+  elements.forEach((el, index) => {
+    if (el.classList.contains('token') && (el.dataset.isRoot === 'true' || el.dataset.canHaveValue === 'true')) {
+        const text = el.textContent.trim(); el.classList.remove('error');
+        if (el.dataset.type === 'Number' && text !== 'My Number' && isNaN(parseFloat(text))) el.classList.add('error');
+    }
+  });
+}
+
+function handleDrop(e) {
+  e.preventDefault(); const slot = e.currentTarget; slot.classList.remove('drop-target');
+  const instanceId = e.dataTransfer.getData('token-instance-id');
+  const dragged = document.querySelector(`.token[data-id='${instanceId}']`);
+  if (!dragged) return;
+  slot.parentNode.insertBefore(dragged, slot.nextSibling);
+  syncAndValidate();
+}
+
+syncAndValidate();
+</script>
+</body>
+</html>

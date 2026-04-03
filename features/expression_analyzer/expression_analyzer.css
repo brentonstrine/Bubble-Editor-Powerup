@@ -1,15 +1,50 @@
-/* Put the description of your feature here */
-❤️ codelesslove,/* Describe this CSS rule here */
-.your-css-selector-goes-here {
-  /* Your properties go here */
+/* ── Expression Analyzer: Dropdown Exploration Highlights ─────────────────────
+   Two tiers:
+     .cl-ea-seen     — label has been observed (Phase 2.5) but internal key not yet known
+     .cl-ea-enriched — label seen AND internal operator/datasource key has been captured
+
+   Design goals:
+   • Subtle enough not to distract from normal Bubble UI
+   • Left border indicator keeps Bubble's own hover/focus/selected states intact
+   • Blue = "seen, partial" / Green = "fully mapped"
+─────────────────────────────────────────────────────────────────────────────── */
+
+/* Phase 5 Highlighting logic (Levels 0-4 Exhaustion system) */
+
+/* Level 1: Peeked (Yellow) */
+.dropdown-item-container[data-cl-ea-level="1"] .dropdown-item {
+    box-shadow: inset 4px 0 0 rgba(234, 179, 8, 0.8) !important; /* yellow-500 */
+    background-color: rgba(234, 179, 8, 0.1) !important;
 }
 
-/* ------------------------------------------------------------------- */
-/* INSTRUCTIONS                                                        */
-/*                                                                     */
-/* 1. Follow instructions in readme.txt in this folder                 */
-/* 2. If your feature doesn't use any CSS, delete this file.           */
-/* 3. Add your CSS in this file. Try to match the format from the      */
-/*    template CSS rule above.                                         */
-/* 4. Doesn't have to be perfect, we can refine it in the Code Review  */
-/* ------------------------------------------------------------------- */
+/* Level 2: Children Peeked (Orange) */
+.dropdown-item-container[data-cl-ea-level="2"] .dropdown-item {
+    box-shadow: inset 4px 0 0 rgba(249, 115, 22, 0.8) !important; /* orange-500 */
+    background-color: rgba(249, 115, 22, 0.1) !important;
+}
+
+/* Level 3: Grandchildren Peeked (Light Green) */
+.dropdown-item-container[data-cl-ea-level="3"] .dropdown-item {
+    box-shadow: inset 4px 0 0 rgba(132, 204, 22, 0.8) !important; /* lime-500 */
+    background-color: rgba(132, 204, 22, 0.1) !important;
+}
+
+/* Level 4: Fully Mapped (Dark Green) */
+.dropdown-item-container[data-cl-ea-level="4"] .dropdown-item {
+    box-shadow: inset 4px 0 0 rgba(34, 197, 94, 0.8) !important; /* green-500 */
+    background-color: rgba(34, 197, 94, 0.1) !important;
+}
+
+/* Keep Bubble's hover state dominant — slightly deepen the tint on hover */
+.dropdown-item-container[data-cl-ea-level="1"]:hover .dropdown-item {
+    background-color: rgba(234, 179, 8, 0.18) !important;
+}
+.dropdown-item-container[data-cl-ea-level="2"]:hover .dropdown-item {
+    background-color: rgba(249, 115, 22, 0.18) !important;
+}
+.dropdown-item-container[data-cl-ea-level="3"]:hover .dropdown-item {
+    background-color: rgba(132, 204, 22, 0.18) !important;
+}
+.dropdown-item-container[data-cl-ea-level="4"]:hover .dropdown-item {
+    background-color: rgba(34, 197, 94, 0.18) !important;
+}
