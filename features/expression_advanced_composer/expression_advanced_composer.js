@@ -1,7 +1,7 @@
 window.loadedCodelessLoveScripts ||= {};
 (function() {
-  console.log("❤️"+"Name of feature goes here");
-  let thisScriptKey = "example_feature";
+  console.log("❤️ Advanced Expression Composer");
+  let thisScriptKey = "advanced_expression_composer";
 
   /* ------------------------------------------------ */
   /* ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ Don't mess with this  ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ */
@@ -16,30 +16,36 @@ window.loadedCodelessLoveScripts ||= {};
   /* ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ Don't mess with this  ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ */
   /* ------------------------------------------------ */
 
-  /* ------------------------------------------------------------------- */
-  // INSTRUCTIONS
-  //
-  // 1. If your feature is CSS only, delete this file.
-  // 2. Replace the example text on line 3 with the name of your feature on line 3 of this file.
-  // 3. Replace the example key on line 4 with your feature's script (snake_case preferred) on line 4 of this file.
-  // 4. Insert any Javascript for your feature here in this file (example line 30). Don't put anything after the })(); at the end.
-  // 5. Delete the "main world" injection demo code on lines 32-36, and delete the example script as well.
-  /* ------------------------------------------------------------------- */
+  const ADVANCED_COMPOSER_SVG = `<span class="py18712 py1871m"><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="py1871q"><path d="M24.7075 24.7075C24.6146 24.8005 24.5043 24.8742 24.3829 24.9246C24.2615 24.9749 24.1314 25.0008 24 25.0008C23.8686 25.0008 23.7385 24.9749 23.6171 24.9246C23.4957 24.8742 23.3854 24.8005 23.2925 24.7075L9 10.4137V21C9 21.2652 8.89464 21.5196 8.70711 21.7071C8.51957 21.8946 8.26522 22 8 22C7.73478 22 7.48043 21.8946 7.29289 21.7071C7.10536 21.5196 7 21.2652 7 21V8C7 7.73478 7.10536 7.48043 7.29289 7.29289C7.48043 7.10536 7.73478 7 8 7H21C21.2652 7 21.5196 7.10536 21.7071 7.29289C21.8946 7.48043 22 7.73478 22 8C22 8.26522 21.8946 8.51957 21.7071 8.70711C21.5196 8.89464 21.2652 9 21 9H10.4137L24.7075 23.2925C24.8005 23.3854 24.8742 23.4957 24.9246 23.6171C24.9749 23.7385 25.0008 23.8686 25.0008 24C25.0008 24.1314 24.9749 24.2615 24.9246 24.3829C24.8742 24.5043 24.8005 24.6146 24.7075 24.7075Z" fill="currentColor"></path></svg></span>`;
 
-    // This is the isolated content script context. This is the ideal place to run all your feature scripts. Even though this content script is "isolated", it still has access to the page's DOM. However, it can't run JavaScript that is running in the main world (the page's context).
-    console.log("❤️ This executes in the context of the feature script!;")
+  function injectTrigger(target) {
+    if (target.nextElementSibling && target.nextElementSibling.classList.contains('advanced-composer-trigger-wrap')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'advanced-composer-trigger-wrap';
+    wrapper.style.cssText = 'display:flex;width:100%;justify-content: left;margin-top:2px;height: 0;margin: 0;bottom: -10px;position: relative;';
     
-    // In the very rare event that you MUST run JavaScript in the main world, you can inject a script into the "main world" (the actual tab context), like this:
-    chrome.runtime.sendMessage({
-        action: "injectScriptIntoMainWorld",
-        jsFile: "features/example_feature/example_script_that_must_execute_in_the_main_world.js"
-    });
+    const btn = document.createElement('div');
+    btn.className = 'expand-collapse-button';
+    btn.innerHTML = `Advanced Composer ${ADVANCED_COMPOSER_SVG}`;
+    
+    btn.onclick = () => {
+      console.log("❤️ Advanced Composer Triggered!");
+      // Placeholder for Step 2: Expression Identification
+    };
 
-    // If your feature needs to run something in the popup, you can inject a script into the "Extension UI world" (the options popup), like this:
-    chrome.runtime.sendMessage({
-        action: "injectScriptIntoExtensionUIWorld",
-        jsFile: "features/example_feature/example_script_that_must_execute_in_the_extension_ui_world.js",
-        cssFile: "features/example_feature/example_style_that_must_load_in_the_extension_ui_world.css"
-    });
+    wrapper.appendChild(btn);
+    target.after(wrapper);
+  }
+
+  const observer = new MutationObserver(() => {
+    // Target 1: .text-composer
+    document.querySelectorAll('.text-composer').forEach(injectTrigger);
+    
+    // Target 2: .expression-composer > .expression-composer
+    document.querySelectorAll('.expression-composer > .expression-composer').forEach(injectTrigger);
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
 
 })();//👈👈 don't delete this, and don't put anything outside of this!!
