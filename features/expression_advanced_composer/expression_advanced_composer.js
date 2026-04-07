@@ -683,7 +683,7 @@ window.loadedCodelessLoveScripts ||= {};
     
     // Sync all possible composers that were affected
     document.querySelectorAll('#cl-composer-main-container, .cl-arg-container').forEach(c => syncAndValidate(c));
-    clearSelection();
+    // Removed clearSelection() so dropped items stay blue/selected
   }
 
   function syncAndValidate(composerEl) {
@@ -847,11 +847,24 @@ window.loadedCodelessLoveScripts ||= {};
     span.addEventListener('dragstart', e => {
       e.stopPropagation();
       console.log("💙❤️ Token Dragstart");
+      
       const selected = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
-      if (selected.length === 0 || !selected.includes(span)) {
+      // If we're dragging something not in the current selection, clear and select it
+      if (!selected.includes(span)) {
         clearSelection();
         span.classList.add('selected');
+        selected.push(span);
       }
+      
+      // OFFSET GHOST IMAGE: Move it down 15px and right 60px away from the cursor
+      if (e.dataTransfer && typeof e.dataTransfer.setDragImage === 'function') {
+         // setDragImage(element, xOffset, yOffset) 
+         // xOffset/yOffset are coordinates relative to the element where the pointer should be.
+         // To move element DOWN/RIGHT of cursor, we tell browser the cursor is at -15, -60 relative to element.
+         // Actually, most browsers clip the image if you use negative offsets, so we use a small positive offset for the cursor's "pin".
+         e.dataTransfer.setDragImage(span, -20, -20); 
+      }
+
       setTimeout(() => {
         const activeGroup = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
         activeGroup.forEach(el => el.classList.add('dragging'));
@@ -894,15 +907,23 @@ window.loadedCodelessLoveScripts ||= {};
     const DRAG_THRESHOLD = 5;
     span.addEventListener('mousedown', (e) => {
       e.stopPropagation();
+      
+      // INSTANT SELECTION: Don't wait for movement threshold to turn blue
+      if (!e.shiftKey && !span.classList.contains('selected')) {
+         clearSelection();
+         span.classList.add('selected');
+         shiftAnchorElement = span;
+      }
+      
       startX = e.clientX; startY = e.clientY;
       const onMouseUp = (ue) => {
+        // If it was just a click (not a drag), ensure final focus/shift-selection state
         if (Math.sqrt(Math.pow(ue.clientX - startX, 2) + Math.pow(ue.clientY - startY, 2)) < DRAG_THRESHOLD) {
           if (e.shiftKey && shiftAnchorElement) {
             updateSelection(shiftAnchorElement, span);
             span.focus();
           } else {
-            clearSelection();
-            shiftAnchorElement = span;
+            // Already handled mousedown above, but ensure focus
             span.focus();
           }
         }
