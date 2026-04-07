@@ -191,6 +191,13 @@ body {
   background: rgba(33, 150, 243, 0.2) !important;
 }
 
+.cl-token.invalid-syntax {
+  border-color: #f44336 !important;
+  background: rgba(244, 67, 54, 0.2) !important;
+  color: #ffcdd2 !important;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.4) !important;
+}
+
 .cl-token.dragging {
   opacity: 0.3 !important;
   transform: scale(0.95) !important;

@@ -192,9 +192,8 @@ window.loadedCodelessLoveScripts ||= {};
 
       const popup = overlay.querySelector('.cl-advanced-composer-popup');
       if (popup) {
-        popup.onclick = (e) => {
-          e.stopPropagation(); // Prevents clicking the popup from closing it via the overlay's click handler
-        };
+        popup.addEventListener('mousedown', (e) => e.stopPropagation());
+        popup.addEventListener('click', (e) => e.stopPropagation());
       }
 
       document.getElementById('cl-composer-close').onclick = (e) => {
@@ -217,9 +216,7 @@ window.loadedCodelessLoveScripts ||= {};
         };
       }
 
-      overlay.onclick = (e) => {
-        if (e.target === overlay) closePopup();
-      };
+      // Removed overlay click-to-close to prevent accidental destruction
     }
     return overlay;
   }
@@ -442,10 +439,22 @@ window.loadedCodelessLoveScripts ||= {};
     if (rawData.type === 'Message') {
        const prevToken = tokenEl.previousElementSibling?.previousElementSibling;
        const leftType = getComputedType(prevToken);
-       if (leftType && BUBBLE_SCHEMA[leftType]) {
-           const opDef = BUBBLE_SCHEMA[leftType].find(o => o.op === rawData.name);
-           if (opDef) return opDef.ret;
+       const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
+       
+       if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
+           const opDef = BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name);
+           if (opDef) {
+               // Resolve generics (e.g. List<text> -> first_element returns 'text')
+               if (opDef.ret === 'any' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
+                   return leftType.substring(5, leftType.length - 1);
+               }
+               if (opDef.ret === 'List<any>' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
+                   return leftType;
+               }
+               return opDef.ret;
+           }
        }
+       return 'error'; // Invalid chain!
     }
     
     // Fallbacks
@@ -455,7 +464,7 @@ window.loadedCodelessLoveScripts ||= {};
     if (rawData.properties?.type) return rawData.properties.type;
     
     // Bubble internal defaults
-    if (rawData.type === 'String') return 'text';
+    if (rawData.type === 'String' || rawData.type === 'ArbitraryText') return 'text';
     if (rawData.type === 'Number') return 'number';
     
     return "text"; // Default
@@ -576,14 +585,21 @@ window.loadedCodelessLoveScripts ||= {};
            }
 
            const tokenEl = createTokenElement(payload);
+           const parent = anchor.parentNode;
            
-           if (anchor.classList.contains('cl-slot')) {
-               anchor.parentNode.insertBefore(tokenEl, anchor.nextSibling);
-           } else if (anchor.classList.contains('cl-token')) {
-               anchor.parentNode.replaceChild(tokenEl, anchor);
+           if (parent) {
+             if (anchor.classList.contains('cl-slot')) {
+                 parent.insertBefore(tokenEl, anchor.nextSibling);
+             } else if (anchor.classList.contains('cl-token')) {
+                 // Double check anchor is still a child (prevents race condition errors)
+                 if (Array.from(parent.children).includes(anchor)) {
+                    parent.replaceChild(tokenEl, anchor);
+                 } else {
+                    parent.appendChild(tokenEl);
+                 }
+             }
+             syncAndValidate(parent);
            }
-           
-           syncAndValidate(tokenEl.parentElement);
         }
       });
       dropdown.appendChild(option);
@@ -663,7 +679,9 @@ window.loadedCodelessLoveScripts ||= {};
 
     // 1. Remove all existing slots within this specific container
     const existingSlots = Array.from(composer.children).filter(c => c.classList.contains('cl-slot'));
-    existingSlots.forEach(s => s.remove());
+    existingSlots.forEach(s => {
+       if (s.parentNode === composer) s.remove();
+    });
     
     // 2. Insert slots around tokens
     const tokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
@@ -675,8 +693,21 @@ window.loadedCodelessLoveScripts ||= {};
       composer.insertBefore(createSlotElement(), tokens[0]);
       
       // Slot after every token
-      tokens.forEach(t => {
+      tokens.forEach((t, i) => {
         composer.insertBefore(createSlotElement(), t.nextSibling);
+        
+        // --- Validation Check ---
+        t.classList.remove('invalid-syntax');
+        const rawData = JSON.parse(t.dataset.bubbleJson || "{}");
+        if (rawData.type === 'Message') {
+           const prevToken = tokens[i - 1]; // Left token in the sequence
+           const leftType = getComputedType(prevToken);
+           const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
+           
+           if (!schemaKey || !BUBBLE_SCHEMA[schemaKey] || !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
+               t.classList.add('invalid-syntax');
+           }
+        }
       });
     }
     
