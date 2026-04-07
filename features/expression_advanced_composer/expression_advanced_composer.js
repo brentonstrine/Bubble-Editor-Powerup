@@ -655,11 +655,15 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   function syncAndValidate(composerEl) {
-    const composer = composerEl || document.getElementById('cl-composer-main-container');
-    if (!composer) return;
+    let composer = composerEl || document.getElementById('cl-composer-main-container');
     
-    // 1. Remove all existing slots to start fresh and avoid logic tangles
-    Array.from(composer.querySelectorAll(':scope > .cl-slot')).forEach(s => s.remove());
+    // Safety: If it's a DOM string or null, resolve to document body or exit
+    if (typeof composer === 'string') composer = document.getElementById(composer);
+    if (!composer || !(composer instanceof Element)) return;
+
+    // 1. Remove all existing slots within this specific container
+    const existingSlots = Array.from(composer.children).filter(c => c.classList.contains('cl-slot'));
+    existingSlots.forEach(s => s.remove());
     
     // 2. Insert slots around tokens
     const tokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
@@ -683,6 +687,7 @@ window.loadedCodelessLoveScripts ||= {};
     const slot = document.createElement('div');
     slot.className = 'cl-slot'; 
     slot.contentEditable = 'true';
+    slot.textContent = '+';
     
     slot.addEventListener('mousedown', (e) => {
       console.log("💙❤️ Slot Mousedown");
@@ -698,6 +703,7 @@ window.loadedCodelessLoveScripts ||= {};
 
     slot.addEventListener('focus', (e) => {
       console.log("💙❤️ Slot Focused");
+      slot.textContent = ''; // Clear the '+' so it doesn't interfere
       showDropdown(slot);
     });
 
@@ -725,7 +731,7 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     slot.addEventListener('blur', e => {
-      slot.textContent = '';
+      slot.textContent = '+'; // Restore the '+'
       
       dropdownHideTimeout = setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
@@ -981,6 +987,8 @@ window.loadedCodelessLoveScripts ||= {};
       container.dataset.dragEventsAttached = "true";
     }
 
+    // Wrap everything in slots
+    syncAndValidate(container);
     // Output initial state to diagnostic window
     triggerRepack();
   }
