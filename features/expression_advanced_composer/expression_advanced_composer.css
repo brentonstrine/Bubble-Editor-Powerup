@@ -195,6 +195,21 @@ body {
   transform: scale(0.95) !important;
 }
 
+.cl-token-label {
+  margin-right: 8px !important;
+  pointer-events: none !important;
+}
+
+.cl-arg-container {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 4px !important;
+  padding: 2px 4px !important;
+  margin-left: 4px !important;
+  border: 1px inset rgba(255, 255, 255, 0.1) !important;
+}
+
 /* ── Dropdown Placeholder ──────────────────────────────────── */
 
 .cl-dropdown {

@@ -186,7 +186,19 @@ window.loadedCodelessLoveScripts ||= {};
       document.body.appendChild(container.firstElementChild);
       overlay = document.getElementById('cl-composer-overlay');
 
-      document.getElementById('cl-composer-close').onclick = closePopup;
+      const popup = overlay.querySelector('.cl-advanced-composer-popup');
+      if (popup) {
+        popup.onclick = (e) => {
+          e.stopPropagation(); // Prevents clicking the popup from closing it via the overlay's click handler
+        };
+      }
+
+      document.getElementById('cl-composer-close').onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePopup();
+      };
+
       overlay.onclick = (e) => {
         if (e.target === overlay) closePopup();
       };
@@ -207,12 +219,14 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   function closePopup() {
+    console.log("💙❤️ Closing Advanced Composer Popup...");
     const overlay = document.getElementById('cl-composer-overlay');
     if (overlay) {
+      hideDropdown(); // Also hide any open dropdowns
       overlay.classList.remove('visible');
       setTimeout(() => {
         overlay.style.display = 'none';
-      }, 300);
+      }, 200);
     }
   }
 
@@ -238,30 +252,90 @@ window.loadedCodelessLoveScripts ||= {};
   // --- Schema Definition ---
   const BUBBLE_SCHEMA = {
     "text": [
-      { op: "equals", arg: "text", ret: "sys.bool", label: "= (equals)" },
+      { op: "equals", arg: "text", ret: "sys.bool", label: "is" },
       { op: "not_equals", arg: "text", ret: "sys.bool", label: "is not" },
-      { op: "is_empty", arg: "null", ret: "sys.bool", label: "is empty" },
       { op: "contains", arg: "text", ret: "sys.bool", label: "contains" },
+      { op: "not_contains", arg: "text", ret: "sys.bool", label: "doesn't contain" },
+      { op: "is_empty", arg: "null", ret: "sys.bool", label: "is empty" },
+      { op: "is_not_empty", arg: "null", ret: "sys.bool", label: "is not empty" },
+      { op: "to_capitalized_words", arg: "null", ret: "text", label: ":capitalized words" },
       { op: "to_uppercase", arg: "null", ret: "text", label: ":uppercase" },
       { op: "to_lowercase", arg: "null", ret: "text", label: ":lowercase" },
+      { op: "format_text", arg: "null", ret: "text", label: ":formatted as..." },
+      { op: "used_as", arg: "file", ret: "file", label: ":used as..." },
+      { op: "trimmed", arg: "null", ret: "text", label: ":trimmed" },
       { op: "length", arg: "null", ret: "number", label: ":number of characters" },
-      { op: "append", arg: "text", ret: "text", label: ":append" }
+      { op: "extract", arg: "text", ret: "text", label: ":extract..." },
+      { op: "converted_to_number", arg: "null", ret: "number", label: ":converted to number" },
+      { op: "split_by", arg: "text", ret: "List<text>", label: ":split by..." },
+      { op: "find_replace", arg: "text", ret: "text", label: ":find & replace" },
+      { op: "extract_regex", arg: "text", ret: "List<text>", label: ":extract with Regex" },
+      { op: "append", arg: "text", ret: "text", label: "append" },
+      { op: "defaulting_to", arg: "text", ret: "text", label: "defaulting to" },
+      { op: "truncated", arg: "number", ret: "text", label: "truncated to" },
+      { op: "truncated_from_end", arg: "number", ret: "text", label: "truncated from end to" },
+      { op: "formatted_as_json_safe", arg: "null", ret: "text", label: ":formatted as JSON-safe" },
+      { op: "is_in", arg: "List<text>", ret: "sys.bool", label: "is in" },
+      { op: "is_not_in", arg: "List<text>", ret: "sys.bool", label: "is not in" }
     ],
     "number": [
-      { op: "equals", arg: "number", ret: "sys.bool", label: "= (equals)" },
+      { op: "equals", arg: "number", ret: "sys.bool", label: "is" },
+      { op: "not_equals", arg: "number", ret: "sys.bool", label: "is not" },
       { op: "greater_than", arg: "number", ret: "sys.bool", label: ">" },
       { op: "less_than", arg: "number", ret: "sys.bool", label: "<" },
+      { op: "greater_or_equal_than", arg: "number", ret: "sys.bool", label: "≥" },
+      { op: "less_or_equal_than", arg: "number", ret: "sys.bool", label: "≤" },
       { op: "plus", arg: "number", ret: "number", label: "+" },
       { op: "minus", arg: "number", ret: "number", label: "-" },
       { op: "times", arg: "number", ret: "number", label: "*" },
       { op: "divide", arg: "number", ret: "number", label: "/" },
-      { op: "format_number", arg: "null", ret: "text", label: ":formatted as text" }
+      { op: "power", arg: "number", ret: "number", label: "^" },
+      { op: "round", arg: "number", ret: "number", label: ":rounded to" },
+      { op: "floor", arg: "null", ret: "number", label: ":floor" },
+      { op: "ceil", arg: "null", ret: "number", label: ":ceiling" },
+      { op: "format_number", arg: "null", ret: "text", label: ":formatted as..." }
     ],
     "sys.bool": [
       { op: "and_", arg: "sys.bool", ret: "sys.bool", label: "and" },
       { op: "or_", arg: "sys.bool", ret: "sys.bool", label: "or" },
       { op: "is_true", arg: "null", ret: "sys.bool", label: "is yes" },
-      { op: "is_false", arg: "null", ret: "sys.bool", label: "is no" }
+      { op: "is_false", arg: "null", ret: "sys.bool", label: "is no" },
+      { op: "format_boolean", arg: "null", ret: "text", label: ":formatted as text" }
+    ],
+    "List": [
+      { op: "count", arg: "null", ret: "number", label: ":count" },
+      { op: "first_element", arg: "null", ret: "any", label: ":first item" },
+      { op: "last_element", arg: "null", ret: "any", label: ":last item" },
+      { op: "random_element", arg: "null", ret: "any", label: ":random item" },
+      { op: "specific_item", arg: "number", ret: "any", label: ":item #" },
+      { op: "contains", arg: "any", ret: "sys.bool", label: "contains" },
+      { op: "not_contains", arg: "any", ret: "sys.bool", label: "doesn't contain" },
+      { op: "limit_to", arg: "number", ret: "List<any>", label: ":items until #" },
+      { op: "list_from", arg: "number", ret: "List<any>", label: ":items from #" },
+      { op: "plus_element", arg: "any", ret: "List<any>", label: ":plus item" },
+      { op: "minus_element", arg: "any", ret: "List<any>", label: ":minus item" },
+      { op: "merged_with", arg: "List<any>", ret: "List<any>", label: ":merged with" },
+      { op: "intersect_with", arg: "List<any>", ret: "List<any>", label: ":intersect with" },
+      { op: "unique", arg: "null", ret: "List<any>", label: ":unique elements" },
+      { op: "filtered", arg: "null", ret: "List<any>", label: ":filtered" },
+      { op: "sorted", arg: "null", ret: "List<any>", label: ":sorted" },
+      { op: "format_as_text", arg: "null", ret: "text", label: ":format as text" }
+    ],
+    "user": [
+      { op: "email", arg: "null", ret: "text", label: "'s email" },
+      { op: "is_logged_in", arg: "null", ret: "sys.bool", label: "is logged in" },
+      { op: "equals", arg: "user", ret: "sys.bool", label: "is" },
+      { op: "not_equals", arg: "user", ret: "sys.bool", label: "is not" }
+    ],
+    "date": [
+      { op: "equals", arg: "date", ret: "sys.bool", label: "is" },
+      { op: "not_equals", arg: "date", ret: "sys.bool", label: "is not" },
+      { op: "greater_than", arg: "date", ret: "sys.bool", label: ">" },
+      { op: "less_than", arg: "date", ret: "sys.bool", label: "<" },
+      { op: "change_days", arg: "number", ret: "date", label: "+(days):" },
+      { op: "change_months", arg: "number", ret: "date", label: "+(months):" },
+      { op: "format_date", arg: "null", ret: "text", label: ":formatted as..." },
+      { op: "extract_from_date", arg: "null", ret: "number", label: ":extract" }
     ]
   };
 
@@ -301,10 +375,30 @@ window.loadedCodelessLoveScripts ||= {};
   // --- Slot & Token Interactive Engine (Ported from demo.html) ---
   let shiftAnchorElement = null;
   let activeDropdown = null;
+  let dropdownHideTimeout = null;
+
+  function normalizeArgToJson(argValue) {
+    if (typeof argValue === 'object' && argValue !== null) {
+      return argValue;
+    } else if (typeof argValue === 'number') {
+      return { type: "Number", value: argValue };
+    } else if (typeof argValue === 'string') {
+      return { type: "String", value: argValue };
+    } else if (typeof argValue === 'boolean') {
+      return { type: "sys.bool", value: argValue };
+    }
+    return { type: "String", value: String(argValue) };
+  }
 
   function showDropdown(anchor) {
-    if (!anchor || document.querySelectorAll('#cl-composer-main-container .selected').length > 1) return;
-    hideDropdown();
+    if (!anchor || document.querySelectorAll('.cl-advanced-composer-popup .selected').length > 1) return;
+    
+    if (dropdownHideTimeout) {
+      clearTimeout(dropdownHideTimeout);
+      dropdownHideTimeout = null;
+    }
+
+    hideDropdown(); // Remove the old one immediately
     
     activeDropdown = document.createElement('div');
     activeDropdown.className = 'cl-dropdown';
@@ -312,6 +406,8 @@ window.loadedCodelessLoveScripts ||= {};
     const rect = anchor.getBoundingClientRect();
     activeDropdown.style.left = rect.left + 'px';
     activeDropdown.style.top = (rect.bottom + 4) + 'px';
+    activeDropdown.dataset.anchorId = Math.random().toString(36).substr(2, 9);
+    anchor.dataset.dropdownId = activeDropdown.dataset.anchorId;
     
     const isSlot = anchor.classList.contains('cl-slot');
     const prevToken = anchor.previousElementSibling;
@@ -323,10 +419,12 @@ window.loadedCodelessLoveScripts ||= {};
       } else {
         // Subsequent slot -> Show Operators for left-hand token
         const leftType = getComputedType(prevToken);
-        if (BUBBLE_SCHEMA[leftType]) {
-          addDropdownItems(activeDropdown, `Actions for ${leftType}`, BUBBLE_SCHEMA[leftType].map(o => ({ label: o.label, val: o })));
+        const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
+        
+        if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
+          addDropdownItems(activeDropdown, `Actions for ${leftType}`, BUBBLE_SCHEMA[schemaKey].map(o => ({ label: o.label, val: o })));
         } else {
-          addDropdownItems(activeDropdown, `No actions found for ${leftType}`, []);
+          addDropdownItems(activeDropdown, `No actions found for ${leftType || 'Unknown'}`, []);
         }
       }
     } else {
@@ -376,14 +474,13 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   function clearSelection() {
-    document.querySelectorAll('#cl-composer-main-container .selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.cl-advanced-composer-popup .selected').forEach(el => el.classList.remove('selected'));
   }
 
   function updateSelection(startEl, endEl) {
-    if (!startEl || !endEl) return;
+    if (!startEl || !endEl || startEl.parentElement !== endEl.parentElement) return;
     clearSelection();
-    const composer = document.getElementById('cl-composer-main-container');
-    if(!composer) return;
+    const composer = startEl.parentElement;
     const kids = Array.from(composer.children);
     let startIndex = kids.indexOf(startEl);
     let endIndex = kids.indexOf(endEl);
@@ -394,11 +491,10 @@ window.loadedCodelessLoveScripts ||= {};
     if (startIndex <= endIndex) {
       for (let i = startIndex; i <= endIndex; i++) kids[i].classList.add('selected');
     }
-    console.log(`💙❤️ Selection updated: indices ${startIndex} to ${endIndex}`);
   }
 
   function clearDropTargets() {
-    document.querySelectorAll('#cl-composer-main-container .drop-target').forEach(el => el.classList.remove('drop-target'));
+    document.querySelectorAll('.cl-advanced-composer-popup .drop-target').forEach(el => el.classList.remove('drop-target'));
   }
 
   function getNearestSlot(token, mouseX) {
@@ -413,8 +509,8 @@ window.loadedCodelessLoveScripts ||= {};
 
   function handleDropOnSlot(slot) {
     if (!slot) return;
-    const composer = document.getElementById('cl-composer-main-container');
-    const selectedItems = Array.from(composer.querySelectorAll('.selected'));
+    const popup = document.querySelector('.cl-advanced-composer-popup');
+    const selectedItems = Array.from(popup.querySelectorAll('.selected'));
     if (selectedItems.length === 0) return;
     
     console.log("💙❤️ Dropped token(s) into new slot");
@@ -428,13 +524,14 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     clearDropTargets();
-    syncAndValidate();
+    
+    // Sync all possible composers that were affected
+    document.querySelectorAll('#cl-composer-main-container, .cl-arg-container').forEach(c => syncAndValidate(c));
     clearSelection();
   }
 
-  function syncAndValidate() {
-    console.log("💙❤️ Syncing and validating slots...");
-    const composer = document.getElementById('cl-composer-main-container');
+  function syncAndValidate(composerEl) {
+    const composer = composerEl || document.getElementById('cl-composer-main-container');
     if (!composer) return;
     const kids = Array.from(composer.children);
     
@@ -449,7 +546,7 @@ window.loadedCodelessLoveScripts ||= {};
     if (composer.children.length === 0) composer.appendChild(createSlotElement());
     
     // Ensure slot between consecutive tokens and before first/after last
-    const currentTokens = composer.querySelectorAll('.cl-token');
+    const currentTokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
     currentTokens.forEach(t => {
       if (!t.previousElementSibling || !t.previousElementSibling.classList.contains('cl-slot')) {
         t.parentNode.insertBefore(createSlotElement(), t);
@@ -458,8 +555,6 @@ window.loadedCodelessLoveScripts ||= {};
         t.parentNode.insertBefore(createSlotElement(), t.nextSibling);
       }
     });
-    
-    // Schema Logic validation will be hooked up here later
   }
 
   function createSlotElement() {
@@ -510,22 +605,30 @@ window.loadedCodelessLoveScripts ||= {};
     slot.addEventListener('blur', e => {
       slot.textContent = '';
       
-      // Delay hiding to allow dropdown clicks to process if they weren't caught by preventDefault
-      setTimeout(() => {
-        if (document.activeElement !== slot) hideDropdown();
-      }, 50);
+      dropdownHideTimeout = setTimeout(() => {
+        if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
+        hideDropdown();
+      }, 150);
       
-      syncAndValidate();
+      syncAndValidate(slot.parentElement);
     });
 
     slot.addEventListener('dragover', e => { 
       e.preventDefault(); 
+      e.stopPropagation();
       clearDropTargets(); 
       slot.classList.add('drop-target'); 
     });
 
-    slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'));
-    slot.addEventListener('drop', e => { e.preventDefault(); handleDropOnSlot(slot); });
+    slot.addEventListener('dragleave', (e) => {
+        e.stopPropagation();
+        slot.classList.remove('drop-target');
+    });
+    slot.addEventListener('drop', e => { 
+        e.preventDefault(); 
+        e.stopPropagation();
+        handleDropOnSlot(slot); 
+    });
 
     return slot;
   }
@@ -533,33 +636,60 @@ window.loadedCodelessLoveScripts ||= {};
   function createTokenElement(tokenObj) {
     const span = document.createElement('span');
     span.className = 'cl-token';
-    span.textContent = renderTokenText(tokenObj);
     span.tabIndex = 0;
     
     // Store raw JSON for later
     span.dataset.bubbleJson = JSON.stringify(tokenObj);
     span.draggable = true;
     
+    if (tokenObj.args !== undefined) {
+      // Operator has arguments! We build a nested structure
+      const labelNode = document.createElement('span');
+      labelNode.textContent = renderTokenText(tokenObj);
+      labelNode.className = 'cl-token-label';
+      span.appendChild(labelNode);
+
+      const argContainer = document.createElement('span');
+      argContainer.className = 'cl-arg-container';
+      
+      // Stop events inside the argument container from bubbling up to the parent token
+      argContainer.addEventListener('mousedown', (e) => e.stopPropagation());
+      argContainer.addEventListener('click', (e) => e.stopPropagation());
+      
+      // Inflate the args into interactive tokens
+      const normalizedJson = normalizeArgToJson(tokenObj.args);
+      const innerTokens = unpackExpression(normalizedJson);
+      innerTokens.forEach(t => argContainer.appendChild(createTokenElement(t)));
+      
+      span.appendChild(argContainer);
+      syncAndValidate(argContainer);
+    } else {
+      span.textContent = renderTokenText(tokenObj);
+    }
+    
     span.addEventListener('dragstart', e => {
-      console.log("💙❤️ Token Dragstart:", span.textContent);
-      const selected = Array.from(document.querySelectorAll('#cl-composer-main-container .selected'));
+      e.stopPropagation();
+      console.log("💙❤️ Token Dragstart");
+      const selected = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
       if (selected.length === 0 || !selected.includes(span)) {
         clearSelection();
         span.classList.add('selected');
       }
       setTimeout(() => {
-        const activeGroup = Array.from(document.querySelectorAll('#cl-composer-main-container .selected'));
+        const activeGroup = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
         activeGroup.forEach(el => el.classList.add('dragging'));
       }, 0);
     });
 
-    span.addEventListener('dragend', () => {
-      document.querySelectorAll('#cl-composer-main-container .dragging').forEach(el => el.classList.remove('dragging'));
+    span.addEventListener('dragend', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.cl-advanced-composer-popup .dragging').forEach(el => el.classList.remove('dragging'));
       clearDropTargets();
     });
 
     span.addEventListener('dragover', e => {
       e.preventDefault();
+      e.stopPropagation();
       clearDropTargets();
       const slot = getNearestSlot(span, e.clientX);
       if (slot && slot.classList.contains('cl-slot')) slot.classList.add('drop-target');
@@ -567,14 +697,17 @@ window.loadedCodelessLoveScripts ||= {};
 
     span.addEventListener('blur', () => {
       span.contentEditable = "false";
-      setTimeout(() => {
-        if (document.activeElement !== span) hideDropdown();
-      }, 50);
-      syncAndValidate();
+      
+      dropdownHideTimeout = setTimeout(() => {
+        if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
+        hideDropdown();
+      }, 150);
+      syncAndValidate(span.parentElement);
     });
 
     span.addEventListener('drop', e => {
       e.preventDefault();
+      e.stopPropagation();
       const slot = getNearestSlot(span, e.clientX);
       if (slot) handleDropOnSlot(slot);
     });
@@ -582,7 +715,7 @@ window.loadedCodelessLoveScripts ||= {};
     let startX, startY;
     const DRAG_THRESHOLD = 5;
     span.addEventListener('mousedown', (e) => {
-      console.log("💙❤️ Token Mousedown:", span.textContent);
+      e.stopPropagation();
       startX = e.clientX; startY = e.clientY;
       const onMouseUp = (ue) => {
         if (Math.sqrt(Math.pow(ue.clientX - startX, 2) + Math.pow(ue.clientY - startY, 2)) < DRAG_THRESHOLD) {
@@ -601,15 +734,11 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     span.addEventListener('focus', (e) => {
-      console.log("💙❤️ Token Focused");
-      
-      // Criterion #11: When a token is activated, text should be selected for editing
-      // if it's a textual/primitive value we will let them edit it. Otherwise dropdown.
-      // Until we have strict schema definitions mapped, we try to allow text editing 
-      // if the token type isn't a known operator.
+      e.stopPropagation();
       const rawData = JSON.parse(span.dataset.bubbleJson);
       
-      if (rawData.type !== 'Message' && rawData.type !== 'Operator') {
+      // Only allow inline text editing on terminal primitive values
+      if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
         span.contentEditable = "true";
         setTimeout(() => {
           const range = document.createRange();
@@ -626,6 +755,7 @@ window.loadedCodelessLoveScripts ||= {};
     span.addEventListener('keydown', e => {
       if (e.key === 'ArrowRight') { 
         e.preventDefault(); 
+        e.stopPropagation();
         hideDropdown();
         if (span.nextElementSibling) { 
           const n = span.nextElementSibling; 
@@ -636,6 +766,8 @@ window.loadedCodelessLoveScripts ||= {};
       }
       if (e.key === 'ArrowLeft') { 
         e.preventDefault(); 
+        e.stopPropagation();
+        hideDropdown();
         if (span.previousElementSibling) { 
           const p = span.previousElementSibling; 
           if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p); 
@@ -644,16 +776,18 @@ window.loadedCodelessLoveScripts ||= {};
         } 
       }
       if (e.key === 'Backspace' || e.key === 'Delete') {
-        const selected = Array.from(document.querySelectorAll('#cl-composer-main-container .selected'));
+        e.stopPropagation();
+        const selected = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
+        const parent = span.parentElement;
         if (selected.length > 0) {
             selected.forEach(el => el.remove());
         } else {
             span.remove();
         }
-        syncAndValidate();
+        syncAndValidate(parent);
         console.log("💙❤️ Token(s) deleted");
       }
-      if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); span.blur(); }
     });
     
     return span;
@@ -662,19 +796,14 @@ window.loadedCodelessLoveScripts ||= {};
   function renderTokenText(token) {
     let text = token.type;
     
+    if (token.type === 'Number' || token.type === 'String' || token.type === 'sys.bool') {
+       return String(token.value !== undefined ? token.value : token.type);
+    }
+    
     if (token.type === 'Message') {
       text = ":" + (token.name || "unknown");
     } else if (token.type === 'Search') {
       text = "Search for " + (token.properties?.type_to_find || "...");
-    }
-    
-    // Add args if present (very basic parsing for MVP)
-    if (token.args !== undefined) {
-      if (typeof token.args === 'object' && token.args !== null) {
-        text += " [" + (token.args.type || "Object") + "]";
-      } else {
-        text += " [" + token.args + "]";
-      }
     }
     
     return text;
