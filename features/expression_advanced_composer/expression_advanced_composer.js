@@ -585,14 +585,17 @@ window.loadedCodelessLoveScripts ||= {};
            }
 
            const tokenEl = createTokenElement(payload);
-           const parent = anchor.parentNode;
+           const parent = anchor.parentNode || document.getElementById('cl-composer-main-container');
            
            if (parent) {
              if (anchor.classList.contains('cl-slot')) {
-                 parent.insertBefore(tokenEl, anchor.nextSibling);
+                 if (anchor.parentNode === parent) {
+                    parent.insertBefore(tokenEl, anchor.nextSibling);
+                 } else {
+                    parent.appendChild(tokenEl);
+                 }
              } else if (anchor.classList.contains('cl-token')) {
-                 // Double check anchor is still a child (prevents race condition errors)
-                 if (Array.from(parent.children).includes(anchor)) {
+                 if (anchor.parentNode === parent) {
                     parent.replaceChild(tokenEl, anchor);
                  } else {
                     parent.appendChild(tokenEl);
@@ -678,9 +681,11 @@ window.loadedCodelessLoveScripts ||= {};
     if (!composer || !(composer instanceof Element)) return;
 
     // 1. Remove all existing slots within this specific container
-    const existingSlots = Array.from(composer.children).filter(c => c.classList.contains('cl-slot'));
-    existingSlots.forEach(s => {
-       if (s.parentNode === composer) s.remove();
+    const kids = Array.from(composer.children);
+    kids.forEach(s => {
+       if (s && s.classList.contains('cl-slot') && s.parentNode === composer) {
+          try { s.remove(); } catch(e) {}
+       }
     });
     
     // 2. Insert slots around tokens
@@ -764,12 +769,12 @@ window.loadedCodelessLoveScripts ||= {};
     slot.addEventListener('blur', e => {
       slot.textContent = '+'; // Restore the '+'
       
-      dropdownHideTimeout = setTimeout(() => {
+      setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
         hideDropdown();
       }, 150);
       
-      syncAndValidate(slot.parentElement);
+      // Removed syncAndValidate(slot.parentElement) from here to prevent race conditions during insertion
     });
 
     slot.addEventListener('dragover', e => { 

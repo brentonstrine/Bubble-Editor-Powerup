@@ -9,14 +9,16 @@ window.EXPRESSION_POWERUP = {
   }
 };
 
-window.addEventListener('message', function(event) {
-  if (event.source !== window || !event.data || event.data.type !== 'CL_ADVANCED_COMPOSER_IDENTIFY') {
-    return;
-  }
+let lastIdentifiedElementPath = null;
+let lastIdentifiedPropName = null;
 
-  console.log("💙❤️ API Bridge received identification request!", event.data);
-  const targetClasses = event.data.targetClasses || [];
-  const propName = event.data.propName;
+window.addEventListener('message', function(event) {
+  if (event.source !== window || !event.data) return;
+
+  if (event.data.type === 'CL_ADVANCED_COMPOSER_IDENTIFY') {
+    console.log("💙❤️ API Bridge received identification request!", event.data);
+    const propName = event.data.propName;
+    lastIdentifiedPropName = propName;
 
   try {
     // 1. Find the currently selected element in the DOM (assuming it's a visual element for now)
@@ -40,6 +42,7 @@ window.addEventListener('message', function(event) {
     }
 
     // 3. Get the node for the element
+    lastIdentifiedElementPath = elementPath;
     const elementNode = window.appquery().app().json.by_path(elementPath);
     console.log("💙❤️ Element Info:", { id: elementId, path: elementPath });
 
@@ -67,7 +70,34 @@ window.addEventListener('message', function(event) {
     }
 
   } catch(e) {
-    console.error("💙❤️ API Bridge Error:", e);
+    console.error("💙❤️ API Bridge Identification Error:", e);
+  }
+  } else if (event.data.type === 'CL_ADVANCED_COMPOSER_SAVE') {
+    const payload = event.data.payload;
+    console.log("💙❤️ API Bridge received SAVE request!", payload);
+    
+    if (!lastIdentifiedElementPath || !lastIdentifiedPropName) {
+      console.error("💙❤️ Cannot save! No active element/property identified.");
+      return;
+    }
+
+    try {
+      const elementNode = window.appquery().app().json.by_path(lastIdentifiedElementPath);
+      if (elementNode.exists()) {
+        const propNode = elementNode.child('properties').child(lastIdentifiedPropName);
+        console.log(`💙❤️ Writing to Bubble node: ${lastIdentifiedElementPath}/properties/${lastIdentifiedPropName}`);
+        
+        // Push the new JSON into Bubble's app data structure
+        propNode.set(payload);
+        
+        // Force the editor to acknowledge the change so it shows up in property editor & saves to server
+        window.appquery().app().workspace.notify_app_structure_changed();
+        
+        console.log("💙❤️ Write-back successful!");
+      }
+    } catch (e) {
+      console.error("💙❤️ API Bridge Save Error:", e);
+    }
   }
 
 });
