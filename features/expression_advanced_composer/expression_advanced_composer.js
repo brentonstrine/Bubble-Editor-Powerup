@@ -441,20 +441,32 @@ window.loadedCodelessLoveScripts ||= {};
        const leftType = getComputedType(prevToken);
        const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
        
+       // 1. INTRINSIC RESOLUTION: Find the operator definition regardless of left-hand validity
+       // This allows the chain to "recover" its type (e.g. :trimmed is always text)
+       let opDef = null;
        if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
-           const opDef = BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name);
-           if (opDef) {
-               // Resolve generics (e.g. List<text> -> first_element returns 'text')
-               if (opDef.ret === 'any' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
-                   return leftType.substring(5, leftType.length - 1);
-               }
-               if (opDef.ret === 'List<any>' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
-                   return leftType;
-               }
-               return opDef.ret;
-           }
+          opDef = BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name);
        }
-       return 'error'; // Invalid chain!
+       
+       // GLOBAL FALLBACK: If not found in specific schema, search all schemas to find intrinsic type
+       if (!opDef) {
+         for (const key in BUBBLE_SCHEMA) {
+           const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
+           if (found) { opDef = found; break; }
+         }
+       }
+
+       if (opDef) {
+           // Resolve generics (e.g. List<text> -> first_element returns 'text')
+           if (opDef.ret === 'any' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
+               return leftType.substring(5, leftType.length - 1);
+           }
+           if (opDef.ret === 'List<any>' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
+               return leftType;
+           }
+           return opDef.ret;
+       }
+       return 'error'; 
     }
     
     // Fallbacks
