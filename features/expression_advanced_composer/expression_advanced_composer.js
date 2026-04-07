@@ -235,6 +235,430 @@ window.loadedCodelessLoveScripts ||= {};
     return flatArray;
   }
 
+  // --- Schema Definition ---
+  const BUBBLE_SCHEMA = {
+    "text": [
+      { op: "equals", arg: "text", ret: "sys.bool", label: "= (equals)" },
+      { op: "not_equals", arg: "text", ret: "sys.bool", label: "is not" },
+      { op: "is_empty", arg: "null", ret: "sys.bool", label: "is empty" },
+      { op: "contains", arg: "text", ret: "sys.bool", label: "contains" },
+      { op: "to_uppercase", arg: "null", ret: "text", label: ":uppercase" },
+      { op: "to_lowercase", arg: "null", ret: "text", label: ":lowercase" },
+      { op: "length", arg: "null", ret: "number", label: ":number of characters" },
+      { op: "append", arg: "text", ret: "text", label: ":append" }
+    ],
+    "number": [
+      { op: "equals", arg: "number", ret: "sys.bool", label: "= (equals)" },
+      { op: "greater_than", arg: "number", ret: "sys.bool", label: ">" },
+      { op: "less_than", arg: "number", ret: "sys.bool", label: "<" },
+      { op: "plus", arg: "number", ret: "number", label: "+" },
+      { op: "minus", arg: "number", ret: "number", label: "-" },
+      { op: "times", arg: "number", ret: "number", label: "*" },
+      { op: "divide", arg: "number", ret: "number", label: "/" },
+      { op: "format_number", arg: "null", ret: "text", label: ":formatted as text" }
+    ],
+    "sys.bool": [
+      { op: "and_", arg: "sys.bool", ret: "sys.bool", label: "and" },
+      { op: "or_", arg: "sys.bool", ret: "sys.bool", label: "or" },
+      { op: "is_true", arg: "null", ret: "sys.bool", label: "is yes" },
+      { op: "is_false", arg: "null", ret: "sys.bool", label: "is no" }
+    ]
+  };
+
+  const DATA_SOURCES = [
+    { type: "Search", ret: "List<any>", label: "Do a search for..." },
+    { type: "CurrentUser", ret: "user", label: "Current User" },
+    { type: "Input", ret: "text", label: "Input value" },
+    { type: "Dynamic", ret: "text", label: "Arbitrary text" }
+  ];
+
+  function getComputedType(tokenEl) {
+    if (!tokenEl) return null;
+    const rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
+    
+    if (rawData.type === 'Message') {
+       const prevToken = tokenEl.previousElementSibling?.previousElementSibling;
+       const leftType = getComputedType(prevToken);
+       if (leftType && BUBBLE_SCHEMA[leftType]) {
+           const opDef = BUBBLE_SCHEMA[leftType].find(o => o.op === rawData.name);
+           if (opDef) return opDef.ret;
+       }
+    }
+    
+    // Fallbacks
+    if (rawData.type === 'Search') return 'List<any>';
+    if (rawData.type === 'Expression' && rawData.value_type) return rawData.value_type;
+    if (rawData.properties?.type_to_find) return 'List<' + rawData.properties.type_to_find + '>';
+    if (rawData.properties?.type) return rawData.properties.type;
+    
+    // Bubble internal defaults
+    if (rawData.type === 'String') return 'text';
+    if (rawData.type === 'Number') return 'number';
+    
+    return "text"; // Default
+  }
+
+  // --- Slot & Token Interactive Engine (Ported from demo.html) ---
+  let shiftAnchorElement = null;
+  let activeDropdown = null;
+
+  function showDropdown(anchor) {
+    if (!anchor || document.querySelectorAll('#cl-composer-main-container .selected').length > 1) return;
+    hideDropdown();
+    
+    activeDropdown = document.createElement('div');
+    activeDropdown.className = 'cl-dropdown';
+    
+    const rect = anchor.getBoundingClientRect();
+    activeDropdown.style.left = rect.left + 'px';
+    activeDropdown.style.top = (rect.bottom + 4) + 'px';
+    
+    const isSlot = anchor.classList.contains('cl-slot');
+    const prevToken = anchor.previousElementSibling;
+    
+    if (isSlot) {
+      if (!prevToken || !prevToken.classList.contains('cl-token')) {
+        // First slot -> Show Data Sources
+        addDropdownItems(activeDropdown, "Data Sources", DATA_SOURCES.map(d => ({ label: d.label, val: d })));
+      } else {
+        // Subsequent slot -> Show Operators for left-hand token
+        const leftType = getComputedType(prevToken);
+        if (BUBBLE_SCHEMA[leftType]) {
+          addDropdownItems(activeDropdown, `Actions for ${leftType}`, BUBBLE_SCHEMA[leftType].map(o => ({ label: o.label, val: o })));
+        } else {
+          addDropdownItems(activeDropdown, `No actions found for ${leftType}`, []);
+        }
+      }
+    } else {
+       // Editing an existing Token
+       addDropdownItems(activeDropdown, "Edit Token", [{ label: "Replace...", val: null }]);
+    }
+
+    const overlay = document.getElementById('cl-composer-overlay');
+    if(overlay) overlay.appendChild(activeDropdown);
+  }
+
+  function addDropdownItems(dropdown, titleText, items) {
+    const header = document.createElement('div');
+    header.className = 'cl-header';
+    header.textContent = titleText;
+    dropdown.appendChild(header);
+
+    if (items.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'cl-option';
+      empty.textContent = 'None available';
+      empty.style.color = '#888';
+      empty.addEventListener('mousedown', e => e.preventDefault());
+      dropdown.appendChild(empty);
+      return;
+    }
+
+    items.forEach(item => {
+      const option = document.createElement('div');
+      option.className = 'cl-option';
+      option.textContent = item.label;
+      option.addEventListener('mousedown', e => e.preventDefault());
+      option.addEventListener('click', () => {
+        console.log("💙❤️ Selected Dropdown Item:", item.val);
+        hideDropdown();
+        // Step 5 insertion logic will go here
+      });
+      dropdown.appendChild(option);
+    });
+  }
+
+  function hideDropdown() {
+    if (activeDropdown) {
+      activeDropdown.remove();
+      activeDropdown = null;
+    }
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('#cl-composer-main-container .selected').forEach(el => el.classList.remove('selected'));
+  }
+
+  function updateSelection(startEl, endEl) {
+    if (!startEl || !endEl) return;
+    clearSelection();
+    const composer = document.getElementById('cl-composer-main-container');
+    if(!composer) return;
+    const kids = Array.from(composer.children);
+    let startIndex = kids.indexOf(startEl);
+    let endIndex = kids.indexOf(endEl);
+    if (startIndex === -1 || endIndex === -1) return;
+    if (startIndex > endIndex) [startIndex, endIndex] = [endIndex, startIndex];
+    while (startIndex <= endIndex && kids[startIndex].classList.contains('cl-slot')) startIndex++;
+    while (endIndex >= startIndex && kids[endIndex].classList.contains('cl-slot')) endIndex--;
+    if (startIndex <= endIndex) {
+      for (let i = startIndex; i <= endIndex; i++) kids[i].classList.add('selected');
+    }
+    console.log(`💙❤️ Selection updated: indices ${startIndex} to ${endIndex}`);
+  }
+
+  function clearDropTargets() {
+    document.querySelectorAll('#cl-composer-main-container .drop-target').forEach(el => el.classList.remove('drop-target'));
+  }
+
+  function getNearestSlot(token, mouseX) {
+    const rect = token.getBoundingClientRect();
+    const midpoint = rect.left + (rect.width / 2);
+    if (mouseX < midpoint) {
+      return token.previousElementSibling;
+    } else {
+      return token.nextElementSibling;
+    }
+  }
+
+  function handleDropOnSlot(slot) {
+    if (!slot) return;
+    const composer = document.getElementById('cl-composer-main-container');
+    const selectedItems = Array.from(composer.querySelectorAll('.selected'));
+    if (selectedItems.length === 0) return;
+    
+    console.log("💙❤️ Dropped token(s) into new slot");
+
+    let ref = slot;
+    selectedItems.forEach(item => {
+      if (item !== slot) {
+        ref.after(item);
+        ref = item;
+      }
+    });
+
+    clearDropTargets();
+    syncAndValidate();
+    clearSelection();
+  }
+
+  function syncAndValidate() {
+    console.log("💙❤️ Syncing and validating slots...");
+    const composer = document.getElementById('cl-composer-main-container');
+    if (!composer) return;
+    const kids = Array.from(composer.children);
+    
+    // Remove consecutive slots
+    for (let i = kids.length - 1; i > 0; i--) { 
+      if (kids[i].classList.contains('cl-slot') && kids[i - 1].classList.contains('cl-slot')) {
+        kids[i].remove(); 
+      }
+    }
+    
+    // Ensure at least one slot if empty
+    if (composer.children.length === 0) composer.appendChild(createSlotElement());
+    
+    // Ensure slot between consecutive tokens and before first/after last
+    const currentTokens = composer.querySelectorAll('.cl-token');
+    currentTokens.forEach(t => {
+      if (!t.previousElementSibling || !t.previousElementSibling.classList.contains('cl-slot')) {
+        t.parentNode.insertBefore(createSlotElement(), t);
+      }
+      if (!t.nextElementSibling || !t.nextElementSibling.classList.contains('cl-slot')) {
+        t.parentNode.insertBefore(createSlotElement(), t.nextSibling);
+      }
+    });
+    
+    // Schema Logic validation will be hooked up here later
+  }
+
+  function createSlotElement() {
+    const slot = document.createElement('div');
+    slot.className = 'cl-slot'; 
+    slot.contentEditable = 'true';
+    
+    slot.addEventListener('mousedown', (e) => {
+      console.log("💙❤️ Slot Mousedown");
+      if (e.shiftKey && shiftAnchorElement) { 
+        updateSelection(shiftAnchorElement, slot); 
+        slot.focus(); 
+      } else { 
+        clearSelection(); 
+        shiftAnchorElement = slot; 
+        slot.focus(); 
+      }
+    });
+
+    slot.addEventListener('focus', (e) => {
+      console.log("💙❤️ Slot Focused");
+      showDropdown(slot);
+    });
+
+    slot.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') { 
+        e.preventDefault(); 
+        hideDropdown();
+        const n = slot.nextElementSibling; 
+        if (n) { 
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, n); 
+          else { clearSelection(); shiftAnchorElement = n; } 
+          n.focus(); 
+        } 
+      }
+      if (e.key === 'ArrowLeft') { 
+        e.preventDefault(); 
+        const p = slot.previousElementSibling; 
+        if (p) { 
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p); 
+          else { clearSelection(); shiftAnchorElement = p; } 
+          p.focus(); 
+        } 
+      }
+      if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
+    });
+
+    slot.addEventListener('blur', e => {
+      slot.textContent = '';
+      
+      // Delay hiding to allow dropdown clicks to process if they weren't caught by preventDefault
+      setTimeout(() => {
+        if (document.activeElement !== slot) hideDropdown();
+      }, 50);
+      
+      syncAndValidate();
+    });
+
+    slot.addEventListener('dragover', e => { 
+      e.preventDefault(); 
+      clearDropTargets(); 
+      slot.classList.add('drop-target'); 
+    });
+
+    slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'));
+    slot.addEventListener('drop', e => { e.preventDefault(); handleDropOnSlot(slot); });
+
+    return slot;
+  }
+
+  function createTokenElement(tokenObj) {
+    const span = document.createElement('span');
+    span.className = 'cl-token';
+    span.textContent = renderTokenText(tokenObj);
+    span.tabIndex = 0;
+    
+    // Store raw JSON for later
+    span.dataset.bubbleJson = JSON.stringify(tokenObj);
+    span.draggable = true;
+    
+    span.addEventListener('dragstart', e => {
+      console.log("💙❤️ Token Dragstart:", span.textContent);
+      const selected = Array.from(document.querySelectorAll('#cl-composer-main-container .selected'));
+      if (selected.length === 0 || !selected.includes(span)) {
+        clearSelection();
+        span.classList.add('selected');
+      }
+      setTimeout(() => {
+        const activeGroup = Array.from(document.querySelectorAll('#cl-composer-main-container .selected'));
+        activeGroup.forEach(el => el.classList.add('dragging'));
+      }, 0);
+    });
+
+    span.addEventListener('dragend', () => {
+      document.querySelectorAll('#cl-composer-main-container .dragging').forEach(el => el.classList.remove('dragging'));
+      clearDropTargets();
+    });
+
+    span.addEventListener('dragover', e => {
+      e.preventDefault();
+      clearDropTargets();
+      const slot = getNearestSlot(span, e.clientX);
+      if (slot && slot.classList.contains('cl-slot')) slot.classList.add('drop-target');
+    });
+
+    span.addEventListener('blur', () => {
+      span.contentEditable = "false";
+      setTimeout(() => {
+        if (document.activeElement !== span) hideDropdown();
+      }, 50);
+      syncAndValidate();
+    });
+
+    span.addEventListener('drop', e => {
+      e.preventDefault();
+      const slot = getNearestSlot(span, e.clientX);
+      if (slot) handleDropOnSlot(slot);
+    });
+
+    let startX, startY;
+    const DRAG_THRESHOLD = 5;
+    span.addEventListener('mousedown', (e) => {
+      console.log("💙❤️ Token Mousedown:", span.textContent);
+      startX = e.clientX; startY = e.clientY;
+      const onMouseUp = (ue) => {
+        if (Math.sqrt(Math.pow(ue.clientX - startX, 2) + Math.pow(ue.clientY - startY, 2)) < DRAG_THRESHOLD) {
+          if (e.shiftKey && shiftAnchorElement) {
+            updateSelection(shiftAnchorElement, span);
+            span.focus();
+          } else {
+            clearSelection();
+            shiftAnchorElement = span;
+            span.focus();
+          }
+        }
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    span.addEventListener('focus', (e) => {
+      console.log("💙❤️ Token Focused");
+      
+      // Criterion #11: When a token is activated, text should be selected for editing
+      // if it's a textual/primitive value we will let them edit it. Otherwise dropdown.
+      // Until we have strict schema definitions mapped, we try to allow text editing 
+      // if the token type isn't a known operator.
+      const rawData = JSON.parse(span.dataset.bubbleJson);
+      
+      if (rawData.type !== 'Message' && rawData.type !== 'Operator') {
+        span.contentEditable = "true";
+        setTimeout(() => {
+          const range = document.createRange();
+          range.selectNodeContents(span);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }, 0);
+      } else {
+        showDropdown(span);
+      }
+    });
+
+    span.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') { 
+        e.preventDefault(); 
+        hideDropdown();
+        if (span.nextElementSibling) { 
+          const n = span.nextElementSibling; 
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, n); 
+          else { clearSelection(); shiftAnchorElement = n; } 
+          n.focus(); 
+        } 
+      }
+      if (e.key === 'ArrowLeft') { 
+        e.preventDefault(); 
+        if (span.previousElementSibling) { 
+          const p = span.previousElementSibling; 
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p); 
+          else { clearSelection(); shiftAnchorElement = p; } 
+          p.focus(); 
+        } 
+      }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        const selected = Array.from(document.querySelectorAll('#cl-composer-main-container .selected'));
+        if (selected.length > 0) {
+            selected.forEach(el => el.remove());
+        } else {
+            span.remove();
+        }
+        syncAndValidate();
+        console.log("💙❤️ Token(s) deleted");
+      }
+      if (e.key === 'Enter') { e.preventDefault(); span.blur(); }
+    });
+    
+    return span;
+  }
+
   function renderTokenText(token) {
     let text = token.type;
     
@@ -270,20 +694,44 @@ window.loadedCodelessLoveScripts ||= {};
     const tokens = unpackExpression(json);
     console.log("💙❤️ Unpacked Flat Array:", tokens);
 
-    // Render the Slot-Token-Slot sequence
-    let html = '';
+    // Clear existing inner HTML
+    container.innerHTML = '';
     
-    // Always start with a slot
-    html += '<div class="cl-slot"></div>';
-    
-    tokens.forEach((token, index) => {
-      const displayName = renderTokenText(token);
-      
-      html += `<div class="cl-token">${displayName}</div>`;
-      html += `<div class="cl-slot"></div>`;
+    // Render the interactive DOM elements
+    tokens.forEach((token) => {
+      const tokenEl = createTokenElement(token);
+      container.appendChild(tokenEl);
     });
 
-    container.innerHTML = html;
+    // Ensure dragging across the root container behaves correctly
+    if (!container.dataset.dragEventsAttached) {
+      container.addEventListener('dragover', e => {
+        e.preventDefault();
+        clearDropTargets();
+        const target = e.target;
+        if (target.classList.contains('cl-slot')) {
+          target.classList.add('drop-target');
+        } else if (target.classList.contains('cl-token')) {
+          const slot = getNearestSlot(target, e.clientX);
+          if (slot) slot.classList.add('drop-target');
+        }
+      });
+
+      container.addEventListener('drop', e => {
+        e.preventDefault();
+        const target = e.target;
+        let finalSlot = null;
+        if (target.classList.contains('cl-slot')) finalSlot = target;
+        else if (target.classList.contains('cl-token')) finalSlot = getNearestSlot(target, e.clientX);
+
+        if (finalSlot) handleDropOnSlot(finalSlot);
+        else clearDropTargets();
+      });
+      container.dataset.dragEventsAttached = "true";
+    }
+
+    // Wrap everything in slots
+    syncAndValidate();
   }
 
   // Listen for the Data Ready event from api_bridge

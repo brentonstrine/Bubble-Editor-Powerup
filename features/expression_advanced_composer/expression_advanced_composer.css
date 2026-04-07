@@ -107,21 +107,53 @@ body {
 /* Reusing Slot & Token styles from demo logic */
 .cl-slot {
   display: inline-block !important;
-  width: 4px !important;
-  min-width: 4px !important;
+  width: 6px !important;
+  min-width: 6px !important;
   height: 32px !important;
   vertical-align: middle !important;
+  outline: none !important;
+  border: 1px solid transparent !important;
+  background: rgba(255, 255, 255, 0.02) !important; /* Slightly visible at rest */
+  cursor: text !important;
   border-radius: 4px !important;
-  transition: all 0.15s ease !important;
-  position: relative !important;
+  padding: 0 4px !important;
+  box-sizing: border-box !important;
+  transition: width 0.15s, background 0.15s, border-color 0.15s !important;
+  overflow: hidden !important;
+  margin: 0 2px !important;
 }
 
-.cl-slot:hover, .cl-slot.active {
+.cl-slot:first-child {
+  margin-left: 4px !important;
+}
+
+/* Hover only changes colors, stays narrow */
+.cl-slot:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: #666 !important;
+}
+
+/* Focused, Drop-target, Selected, or Last container -> Expanding or Highlighting */
+.cl-slot:focus,
+.cl-slot.selected,
+.cl-slot.drop-target,
+.cl-slot:last-child {
   width: 24px !important;
   min-width: 24px !important;
   background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px dashed #444 !important;
-  margin: 0 4px !important;
+  border: 1px dashed #888 !important;
+}
+
+.cl-slot:focus {
+  border: 1px solid #4caf50 !important;
+  background: rgba(76, 175, 80, 0.1) !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4) !important;
+}
+
+.cl-slot.drop-target {
+  border: 1px dashed #ffeb3b !important;
+  background: rgba(255, 235, 59, 0.2) !important;
 }
 
 .cl-token {
@@ -135,9 +167,16 @@ body {
   color: #e0e0e0 !important;
   font-size: 13px !important;
   font-weight: 500 !important;
-  cursor: grab !important;
+  cursor: pointer !important;
   user-select: none !important;
-  transition: all 0.2s !important;
+  transition: all 0.1s !important;
+  margin: 0 !important;
+  outline: none !important;
+}
+
+.cl-token:focus {
+  border-color: #fff !important;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4) !important;
 }
 
 .cl-token:hover {
@@ -148,4 +187,46 @@ body {
 .cl-token.selected {
   border-color: #2196F3 !important;
   box-shadow: 0 0 12px rgba(33, 150, 243, 0.4) !important;
+  background: rgba(33, 150, 243, 0.2) !important;
+}
+
+.cl-token.dragging {
+  opacity: 0.3 !important;
+  transform: scale(0.95) !important;
+}
+
+/* ── Dropdown Placeholder ──────────────────────────────────── */
+
+.cl-dropdown {
+  position: absolute !important;
+  background: #2c2c2c !important;
+  border: 1px solid #555 !important;
+  border-radius: 4px !important;
+  margin-top: 2px !important;
+  z-index: 1000001 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  min-width: 150px !important;
+  min-height: 48px !important;
+}
+
+.cl-dropdown .cl-option {
+  padding: 8px 16px !important;
+  cursor: pointer !important;
+  color: #eee !important;
+  font-size: 12px !important;
+}
+
+.cl-dropdown .cl-option:hover,
+.cl-dropdown .cl-option.highlighted-option {
+  background: #444 !important;
+}
+
+.cl-dropdown .cl-header {
+  font-size: 10px !important;
+  color: #888 !important;
+  text-transform: uppercase !important;
+  padding: 4px 16px !important;
+  background: #222 !important;
 }
