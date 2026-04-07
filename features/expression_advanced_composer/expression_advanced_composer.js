@@ -61,8 +61,25 @@ window.loadedCodelessLoveScripts ||= {};
     }, 500);
   }
 
+  function getTargets() {
+    return [
+      ...document.querySelectorAll('.text-composer'),
+      ...document.querySelectorAll('.expression-composer > .expression-composer'),
+      ...document.querySelectorAll('.item-wrapper .expression-composer')
+    ];
+  }
+
   function initObserver() {
     console.log("💙❤️ Initializing Advanced Composer Observer...");
+
+    // 1. Immediate scan
+    const initialTargets = getTargets();
+    if (initialTargets.length > 0) {
+      console.log(`💙❤️ Found ${initialTargets.length} targets on initial load.`);
+      initialTargets.forEach(injectTrigger);
+    }
+
+    // 2. Setup observer to catch future appearances
     const wrapper = document.querySelector('.property-editor-wrapper');
     if (!wrapper) {
       console.log("💙❤️ .property-editor-wrapper not found yet. Watching body...");
@@ -87,11 +104,7 @@ window.loadedCodelessLoveScripts ||= {};
     const observer = new MutationObserver(() => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        const targets = [
-          ...document.querySelectorAll('.text-composer'),
-          ...document.querySelectorAll('.expression-composer > .expression-composer')
-        ];
-
+        const targets = getTargets();
         if (targets.length > 0) {
           targets.forEach(injectTrigger);
         }
@@ -101,10 +114,7 @@ window.loadedCodelessLoveScripts ||= {};
     observer.observe(container, { childList: true, subtree: true });
     
     // Initial run
-    const initialTargets = [
-      ...document.querySelectorAll('.text-composer'),
-      ...document.querySelectorAll('.expression-composer > .expression-composer')
-    ];
+    const initialTargets = getTargets();
     if (initialTargets.length > 0) {
       initialTargets.forEach(injectTrigger);
     }

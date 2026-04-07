@@ -1,12 +1,9 @@
 /* Advanced Expression Composer Trigger Button */
-❤️ .codelesslove,
+💙❤️ .codelesslove,
 body {
   .❤️advanced-composer {
-    position: relative;
-    bottom: -10px;
     display: flex;
-    justify-content: left;
-    /*height: 0;*/
+    justify-content: flex-start;
     margin: 0;
   }
 }
