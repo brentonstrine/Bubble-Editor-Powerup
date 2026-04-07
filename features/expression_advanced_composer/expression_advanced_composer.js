@@ -15,8 +15,8 @@ window.loadedCodelessLoveScripts ||= {};
 
   // Inject API bridge into the main world so we can access appquery
   chrome.runtime.sendMessage({
-      action: "injectScriptIntoMainWorld",
-      jsFile: "features/expression_advanced_composer/api_bridge.js"
+    action: "injectScriptIntoMainWorld",
+    jsFile: "features/expression_advanced_composer/api_bridge.js"
   });
   /* ------------------------------------------------ */
   /* ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ Don't mess with this  ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ */
@@ -32,41 +32,41 @@ window.loadedCodelessLoveScripts ||= {};
     if (row.hasAttribute('data-cl-attached')) return;
 
     console.log("💙❤️ Attempting to inject Advanced Composer button into row:", row);
-    
+
     // Force the row to column so our button sits below the input
     row.style.setProperty('flex-direction', 'column', 'important');
     row.style.setProperty('align-items', 'flex-start', 'important');
-    
+
     const isItemWrapper = target.closest('.item-wrapper') !== null;
-    const marginTop = isItemWrapper ? '-20px' : '5px';
+    const marginTop = isItemWrapper ? '5px' : '5px';//always 5px for now. will change this in the future when we've fixed the issue with the Expand button above being in frontof it, preventing clicks.
 
     const wrapper = document.createElement('div');
     wrapper.className = '❤️advanced-composer';
     wrapper.setAttribute('data-cl-injected', 'true');
     wrapper.style.cssText = `width: 100%; display: flex; justify-content: flex-start; margin-top: ${marginTop};`;
-    
+
     const btn = document.createElement('div');
     btn.className = 'expand-collapse-button';
     btn.innerHTML = `Advanced Composer ${ADVANCED_COMPOSER_SVG}`;
-    
+
     btn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
       console.log("💙❤️ Advanced Composer Triggered!");
-      
+
       // Step 2: Extracting ID
       // Bubble escapes node IDs into the classlist. We need to find the node ID.
       // Usually, it's the class that starts with an 'a' or another pattern
       // Often target has the class 'control-owner' or similar containing the ID in some way.
       // Easiest is to send the target HTML or classes to the main world.
-      
+
       let classListArray = Array.from(target.classList);
       console.log("💙❤️ Target classes:", classListArray);
-      
+
       const propWrapper = target.closest('[data-prop-name]');
       const propName = propWrapper ? propWrapper.getAttribute('data-prop-name') : null;
       console.log("💙❤️ Target property Name:", propName);
-      
+
       // Send message via window to trigger api_bridge extraction.
       window.postMessage({
         type: 'CL_ADVANCED_COMPOSER_IDENTIFY',
@@ -78,7 +78,7 @@ window.loadedCodelessLoveScripts ||= {};
     wrapper.appendChild(btn);
     row.appendChild(wrapper);
     row.setAttribute('data-cl-attached', 'true');
-    
+
     console.log("💙❤️ Injection complete!");
 
     // Double check after a short delay if it's still there
@@ -141,7 +141,7 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     observer.observe(container, { childList: true, subtree: true });
-    
+
     // Initial run
     const initialTargets = getTargets();
     if (initialTargets.length > 0) {

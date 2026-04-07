@@ -39,18 +39,30 @@ window.addEventListener('message', function(event) {
       return;
     }
 
-    // 3. Get the raw JSON for the element
+    // 3. Get the node for the element
     const elementNode = window.appquery().app().json.by_path(elementPath);
-    const elementJson = elementNode.raw();
-    console.log("💙❤️ Full Element JSON:", elementJson);
+    console.log("💙❤️ Element Info:", { id: elementId, path: elementPath });
 
-    // 4. Drill down into the specific property
-    if (propName && elementJson.properties) {
-      const expressionJson = elementJson.properties[propName];
-      if (expressionJson) {
-        console.log(`💙❤️ Specific Expression JSON for property '${propName}':`, expressionJson);
+    // 4. Drill down into the specific property node
+    if (propName && elementNode.exists()) {
+      const propertiesNode = elementNode.child('properties');
+      
+      if (propertiesNode.exists()) {
+        const propNode = propertiesNode.child(propName);
+        if (propNode.exists()) {
+          const rawJson = propNode.raw();
+          
+          // Let the popup script know the data is ready
+          window.postMessage({
+            type: 'CL_ADVANCED_COMPOSER_DATA_READY',
+            expressionJson: rawJson
+          }, '*');
+        } else {
+          console.warn(`💙❤️ Property Node '${propName}' not found in 'properties'!`);
+          console.log("💙❤️ Available properties:", propertiesNode.child_names());
+        }
       } else {
-        console.warn(`💙❤️ Property '${propName}' not found in element's properties!`);
+        console.warn(`💙❤️ No 'properties' child found on the element node!`);
       }
     }
 
