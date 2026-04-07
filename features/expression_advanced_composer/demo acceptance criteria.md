@@ -20,3 +20,5 @@ Acceptance Criteria
 18. When dragging an item or string of items before dropping, whichever slot will receive it when dropped should have a yellow border to indicate that that's the drop zone. 
 19. Dropping items should be instant. There should be no animation or transition. There should not be any lag, delay, or hanging.
 20. Slots are small and going back to the larger size when active. When hovered, it merely changes color/border, not size.
+21. The first slot is special. When it's the only part of the expression it is full size & visible color.
+22. The slots 

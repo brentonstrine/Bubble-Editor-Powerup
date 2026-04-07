@@ -1,115 +1,12 @@
 /* Advanced Expression Composer Trigger Button */
-.expand-collapse-button {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: #2b2b2b !important;
-  color: #a0a0a0 !important;
-  border: 1px solid #444 !important;
-  border-radius: 4px !important;
-  padding: 2px 8px !important;
-  cursor: pointer !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  transition: all 0.2s ease !important;
-  user-select: none !important;
-  pointer-events: auto !important;
-  z-index: 100 !important;
-  margin-left: 10px !important;
-}
-
-.expand-collapse-button:hover {
-  background: #3d3d3d !important;
-  color: #fff !important;
-  border-color: #666 !important;
-}
-
-.expand-collapse-button svg {
-  width: 14px !important;
-  height: 14px !important;
-  margin-left: 4px !important;
-}
-
-/* Stealth Slot & Token Styles (Ported from demo.html) */
-.cl-advanced-composer-popup {
-  position: fixed !important;
-  background: #1e1e1e !important;
-  border: 1px solid #333 !important;
-  border-radius: 8px !important;
-  padding: 15px !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
-  z-index: 200000 !important;
-  min-width: 400px !important;
-  font-family: Inter, sans-serif !important;
-}
-
-.cl-composer-container {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 0px !important;
-  padding: 10px !important;
-  border: 1px solid #333 !important;
-  border-radius: 8px !important;
-  min-height: 48px !important;
-  background: #1a1a1a !important;
-}
-
-.cl-slot {
-  display: inline-block !important;
-  width: 4px !important;
-  min-width: 4px !important;
-  height: 28px !important;
-  vertical-align: middle !important;
-  outline: none !important;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  caret-color: #fff !important;
-  cursor: text !important;
-  border-radius: 4px !important;
-  line-height: 28px !important;
-  padding: 0 4px !important;
-  box-sizing: border-box !important;
-  transition: width 0.15s, background 0.15s, border-color 0.15s !important;
-  overflow: hidden !important;
-}
-
-.cl-slot:first-child {
-  margin-left: 4px !important;
-}
-
-.cl-slot:focus,
-.cl-slot.selected,
-.cl-slot.drop-target,
-.cl-slot.invalid,
-.cl-slot:only-child {
-  width: 20px !important;
-  min-width: 20px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px dashed #444 !important;
-}
-
-.cl-slot:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: #666 !important;
-}
-
-.cl-token {
-  display: inline-block !important;
-  padding: 2px 8px !important;
-  border-radius: 4px !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  font-weight: 600 !important;
-  font-size: 0.95rem !important;
-  margin: 0 2px !important;
-  outline: none !important;
-  border: 2px solid transparent !important;
-}
-
-.cl-token.selected,
-.cl-slot.selected {
-  outline: 2px solid #2196F3 !important;
-  outline-offset: 2px !important;
-  background: rgba(33, 150, 243, 0.3) !important;
+❤️ .codelesslove,
+body {
+  .❤️advanced-composer {
+    position: relative;
+    bottom: -10px;
+    display: flex;
+    justify-content: left;
+    /*height: 0;*/
+    margin: 0;
+  }
 }

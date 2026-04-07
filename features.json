@@ -512,5 +512,17 @@
     "contributors": [
       "rico"
     ]
+  },
+  {
+    "key": "advanced_expression_composer",
+    "category": "Expressions",
+    "name": "Advanced Expression Composer",
+    "description": "A type-aware, non-linear expression editor for Bubble that replaces the native interface with a high-fidelity popup. Features proximity-based drag and drop, stealth slots, and automatic type validation.",
+    "cssFile": "features/expression_advanced_composer/expression_advanced_composer.css",
+    "jsFile": "features/expression_advanced_composer/expression_advanced_composer.js",
+    "default": true,
+    "contributors": [
+      "rico"
+    ]
   }
 ]
