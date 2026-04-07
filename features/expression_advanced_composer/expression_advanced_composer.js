@@ -170,9 +170,13 @@ window.loadedCodelessLoveScripts ||= {};
           </div>
           
           <div style="margin-top: 16px;">
-            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Raw Expression JSON (Diagnostics)</div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Live JSON Engine Output (Diagnostics)</div>
             <pre id="cl-composer-raw-json" style="margin: 0; padding: 12px; background: #0a0a0a; color: #4caf50; border: 1px solid #222; border-radius: 8px; font-family: monospace; font-size: 11px; max-height: 200px; overflow: auto;"></pre>
           </div>
+        </div>
+        <div class="cl-composer-footer" style="padding: 12px 16px; background: rgba(0, 0, 0, 0.4); border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: flex-end; gap: 12px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+          <button class="cl-btn cl-btn-cancel" id="cl-btn-cancel" style="padding: 6px 12px; border-radius: 4px; border: none; font-family: inherit; font-size: 13px; cursor: pointer; background: rgba(255, 255, 255, 0.1); color: #fff;">Cancel</button>
+          <button class="cl-btn cl-btn-save" id="cl-btn-save" style="padding: 6px 12px; border-radius: 4px; border: none; font-family: inherit; font-size: 13px; cursor: pointer; background: #2196F3; color: #fff;">Save changes</button>
         </div>
       </div>
     </div>
@@ -198,6 +202,20 @@ window.loadedCodelessLoveScripts ||= {};
         e.stopPropagation();
         closePopup();
       };
+      
+      const btnCancel = document.getElementById('cl-btn-cancel');
+      if (btnCancel) {
+        btnCancel.onclick = (e) => { e.preventDefault(); e.stopPropagation(); closePopup(); };
+      }
+
+      const btnSave = document.getElementById('cl-btn-save');
+      if (btnSave) {
+        btnSave.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSave();
+        };
+      }
 
       overlay.onclick = (e) => {
         if (e.target === overlay) closePopup();
@@ -206,7 +224,11 @@ window.loadedCodelessLoveScripts ||= {};
     return overlay;
   }
 
+  let _cl_originalExpressionJson = null;
+
   function openPopup(expressionJson) {
+    _cl_originalExpressionJson = JSON.parse(JSON.stringify(expressionJson)); // deep clone
+    
     const overlay = createPopup();
     overlay.style.display = 'flex';
     // Small delay to trigger transitions
@@ -216,6 +238,19 @@ window.loadedCodelessLoveScripts ||= {};
     
     console.log("💙❤️ Popup opened with expression:", expressionJson);
     renderExpression(expressionJson);
+  }
+
+  function handleSave() {
+    console.log("💙❤️ Save triggered: Committing compiled expression to Bubble...");
+    const mainContainer = document.getElementById('cl-composer-main-container');
+    const finalExpression = packExpression(mainContainer);
+    
+    window.postMessage({
+        type: 'CL_ADVANCED_COMPOSER_SAVE',
+        payload: finalExpression
+    }, '*');
+    
+    closePopup();
   }
 
   function closePopup() {
@@ -247,6 +282,60 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     return flatArray;
+  }
+
+  // --- Engine Packer (Phase 6) ---
+  function packExpression(composerEl) {
+    if (!composerEl) return null;
+    
+    const tokens = Array.from(composerEl.children).filter(el => el.classList.contains('cl-token'));
+    if (tokens.length === 0) return null;
+    
+    // Recursive node chain builder
+    function buildNode(index) {
+      if (index >= tokens.length) return null;
+      
+      const tokenEl = tokens[index];
+      const rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
+      
+      // Look for inner interactive args layer
+      const argContainer = Array.from(tokenEl.children).find(c => c.classList.contains('cl-arg-container'));
+      if (argContainer) {
+         const innerPacked = packExpression(argContainer);
+         if (innerPacked) rawData.args = innerPacked;
+         else delete rawData.args;
+      } else {
+         // Resolve primitive content edits if user typed inline
+         if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
+            const rawText = Array.from(tokenEl.childNodes)
+                     .filter(node => node.nodeType === Node.TEXT_NODE)
+                     .map(node => node.textContent).join('').trim();
+            
+            if (rawData.type === 'Number') rawData.value = Number(rawText);
+            else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
+            else rawData.value = rawText;
+         }
+      }
+      
+      const nextNode = buildNode(index + 1);
+      if (nextNode) rawData.next = nextNode;
+      else delete rawData.next;
+      
+      return rawData;
+    }
+    
+    return buildNode(0);
+  }
+
+  function triggerRepack() {
+    const mainContainer = document.getElementById('cl-composer-main-container');
+    if (!mainContainer) return;
+    const currentExpression = packExpression(mainContainer);
+    
+    const rawBox = document.getElementById('cl-composer-raw-json');
+    if (rawBox) {
+      rawBox.textContent = JSON.stringify(currentExpression, null, 2);
+    }
   }
 
   // --- Schema Definition ---
@@ -457,10 +546,45 @@ window.loadedCodelessLoveScripts ||= {};
       option.className = 'cl-option';
       option.textContent = item.label;
       option.addEventListener('mousedown', e => e.preventDefault());
-      option.addEventListener('click', () => {
+      option.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         console.log("💙❤️ Selected Dropdown Item:", item.val);
+        
+        if (!activeDropdown) return;
+        const anchorId = activeDropdown.dataset.anchorId;
+        const anchor = document.querySelector(`[data-dropdown-id="${anchorId}"]`);
         hideDropdown();
-        // Step 5 insertion logic will go here
+        
+        if (anchor && item.val) {
+           let payload = item.val;
+           
+           if (payload.op) {
+              payload = { type: "Message", name: payload.op };
+              if (item.val.arg && item.val.arg !== 'null') {
+                 if (item.val.arg === 'number') payload.args = { type: 'Number', value: 0 };
+                 else if (item.val.arg === 'text') payload.args = { type: 'String', value: '' };
+                 else if (item.val.arg === 'sys.bool') payload.args = { type: 'sys.bool', value: false };
+                 else payload.args = { type: 'dynamic_stub', btype: item.val.arg };
+              }
+           } else if (payload.type === 'Search') {
+              payload = { type: 'Search', properties: { type_to_find: "user" } };
+           } else if (payload.type === 'CurrentUser') {
+              payload = { type: 'CurrentUser' };
+           } else {
+              payload = JSON.parse(JSON.stringify(payload));
+           }
+
+           const tokenEl = createTokenElement(payload);
+           
+           if (anchor.classList.contains('cl-slot')) {
+               anchor.parentNode.insertBefore(tokenEl, anchor.nextSibling);
+           } else if (anchor.classList.contains('cl-token')) {
+               anchor.parentNode.replaceChild(tokenEl, anchor);
+           }
+           
+           syncAndValidate(tokenEl.parentElement);
+        }
       });
       dropdown.appendChild(option);
     });
@@ -533,28 +657,26 @@ window.loadedCodelessLoveScripts ||= {};
   function syncAndValidate(composerEl) {
     const composer = composerEl || document.getElementById('cl-composer-main-container');
     if (!composer) return;
-    const kids = Array.from(composer.children);
     
-    // Remove consecutive slots
-    for (let i = kids.length - 1; i > 0; i--) { 
-      if (kids[i].classList.contains('cl-slot') && kids[i - 1].classList.contains('cl-slot')) {
-        kids[i].remove(); 
-      }
+    // 1. Remove all existing slots to start fresh and avoid logic tangles
+    Array.from(composer.querySelectorAll(':scope > .cl-slot')).forEach(s => s.remove());
+    
+    // 2. Insert slots around tokens
+    const tokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
+    
+    if (tokens.length === 0) {
+      composer.appendChild(createSlotElement());
+    } else {
+      // Slot at the very beginning
+      composer.insertBefore(createSlotElement(), tokens[0]);
+      
+      // Slot after every token
+      tokens.forEach(t => {
+        composer.insertBefore(createSlotElement(), t.nextSibling);
+      });
     }
     
-    // Ensure at least one slot if empty
-    if (composer.children.length === 0) composer.appendChild(createSlotElement());
-    
-    // Ensure slot between consecutive tokens and before first/after last
-    const currentTokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
-    currentTokens.forEach(t => {
-      if (!t.previousElementSibling || !t.previousElementSibling.classList.contains('cl-slot')) {
-        t.parentNode.insertBefore(createSlotElement(), t);
-      }
-      if (!t.nextElementSibling || !t.nextElementSibling.classList.contains('cl-slot')) {
-        t.parentNode.insertBefore(createSlotElement(), t.nextSibling);
-      }
-    });
+    setTimeout(triggerRepack, 0); 
   }
 
   function createSlotElement() {
@@ -662,7 +784,7 @@ window.loadedCodelessLoveScripts ||= {};
       innerTokens.forEach(t => argContainer.appendChild(createTokenElement(t)));
       
       span.appendChild(argContainer);
-      syncAndValidate(argContainer);
+      // No syncAndValidate here; it will be called by the parent or unpacker
     } else {
       span.textContent = renderTokenText(tokenObj);
     }
@@ -859,8 +981,8 @@ window.loadedCodelessLoveScripts ||= {};
       container.dataset.dragEventsAttached = "true";
     }
 
-    // Wrap everything in slots
-    syncAndValidate();
+    // Output initial state to diagnostic window
+    triggerRepack();
   }
 
   // Listen for the Data Ready event from api_bridge
