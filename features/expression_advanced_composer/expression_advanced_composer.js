@@ -410,26 +410,26 @@ window.loadedCodelessLoveScripts ||= {};
     anchor.dataset.dropdownId = activeDropdown.dataset.anchorId;
     
     const isSlot = anchor.classList.contains('cl-slot');
-    const prevToken = anchor.previousElementSibling;
+    // For a slot, the token to its left is previousElementSibling. 
+    // For a token, the token to its left is previousElementSibling (which is a slot) -> previousElementSibling
+    const referenceToken = isSlot ? anchor.previousElementSibling : anchor.previousElementSibling?.previousElementSibling;
     
-    if (isSlot) {
-      if (!prevToken || !prevToken.classList.contains('cl-token')) {
-        // First slot -> Show Data Sources
-        addDropdownItems(activeDropdown, "Data Sources", DATA_SOURCES.map(d => ({ label: d.label, val: d })));
-      } else {
-        // Subsequent slot -> Show Operators for left-hand token
-        const leftType = getComputedType(prevToken);
-        const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
-        
-        if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
-          addDropdownItems(activeDropdown, `Actions for ${leftType}`, BUBBLE_SCHEMA[schemaKey].map(o => ({ label: o.label, val: o })));
-        } else {
-          addDropdownItems(activeDropdown, `No actions found for ${leftType || 'Unknown'}`, []);
-        }
-      }
+    if (!referenceToken || !referenceToken.classList.contains('cl-token')) {
+      // First slot or first token -> Show Data Sources
+      const title = isSlot ? "Data Sources" : "Replace Data Source";
+      addDropdownItems(activeDropdown, title, DATA_SOURCES.map(d => ({ label: d.label, val: d })));
     } else {
-       // Editing an existing Token
-       addDropdownItems(activeDropdown, "Edit Token", [{ label: "Replace...", val: null }]);
+      // Subsequent slot/token -> Show Operators for left-hand token
+      const leftType = getComputedType(referenceToken);
+      const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
+      
+      const title = isSlot ? `Actions for ${leftType}` : `Replace Action`;
+      
+      if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
+        addDropdownItems(activeDropdown, title, BUBBLE_SCHEMA[schemaKey].map(o => ({ label: o.label, val: o })));
+      } else {
+        addDropdownItems(activeDropdown, `No actions found for ${leftType || 'Unknown'}`, []);
+      }
     }
 
     const overlay = document.getElementById('cl-composer-overlay');
