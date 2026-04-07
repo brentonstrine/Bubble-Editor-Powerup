@@ -673,6 +673,9 @@ window.loadedCodelessLoveScripts ||= {};
       if (item !== slot) {
         ref.after(item);
         ref = item;
+        // Animation highlight
+        item.classList.add('just-dropped');
+        setTimeout(() => item.classList.remove('just-dropped'), 1000);
       }
     });
 
