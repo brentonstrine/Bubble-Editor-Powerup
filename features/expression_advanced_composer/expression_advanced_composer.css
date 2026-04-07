@@ -19,7 +19,7 @@ body {
   background: rgba(0, 0, 0, 0.4) !important;
   backdrop-filter: blur(4px) !important;
   z-index: 1000000 !important;
-  display: flex !important;
+  display: none;
   align-items: center !important;
   justify-content: center !important;
   opacity: 0;

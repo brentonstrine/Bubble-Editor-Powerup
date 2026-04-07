@@ -230,7 +230,7 @@ window.loadedCodelessLoveScripts ||= {};
     _cl_originalExpressionJson = JSON.parse(JSON.stringify(expressionJson)); // deep clone
     
     const overlay = createPopup();
-    overlay.style.display = 'flex';
+    overlay.style.setProperty('display', 'flex', 'important');
     // Small delay to trigger transitions
     setTimeout(() => {
       overlay.classList.add('visible');
@@ -260,8 +260,8 @@ window.loadedCodelessLoveScripts ||= {};
       hideDropdown(); // Also hide any open dropdowns
       overlay.classList.remove('visible');
       setTimeout(() => {
-        overlay.style.display = 'none';
-      }, 200);
+        overlay.style.setProperty('display', 'none', 'important');
+      }, 300);
     }
   }
 
