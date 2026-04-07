@@ -504,7 +504,8 @@ window.loadedCodelessLoveScripts ||= {};
     const rect = anchor.getBoundingClientRect();
     activeDropdown.style.left = rect.left + 'px';
     activeDropdown.style.top = (rect.bottom + 4) + 'px';
-    activeDropdown.dataset.anchorId = Math.random().toString(36).substr(2, 9);
+    activeDropdown.dataset.anchorId = anchor.id || 'cl-anchor-' + Math.random().toString(36).substr(2, 9);
+    if (!anchor.id) anchor.id = activeDropdown.dataset.anchorId;
     anchor.dataset.dropdownId = activeDropdown.dataset.anchorId;
     
     const isSlot = anchor.classList.contains('cl-slot');
@@ -562,7 +563,7 @@ window.loadedCodelessLoveScripts ||= {};
         
         if (!activeDropdown) return;
         const anchorId = activeDropdown.dataset.anchorId;
-        const anchor = document.querySelector(`[data-dropdown-id="${anchorId}"]`);
+        const anchor = document.getElementById(anchorId);
         hideDropdown();
         
         if (anchor && item.val) {
@@ -585,24 +586,33 @@ window.loadedCodelessLoveScripts ||= {};
            }
 
            const tokenEl = createTokenElement(payload);
-           const parent = anchor.parentNode || document.getElementById('cl-composer-main-container');
-           
-           if (parent) {
-             if (anchor.classList.contains('cl-slot')) {
-                 if (anchor.parentNode === parent) {
-                    parent.insertBefore(tokenEl, anchor.nextSibling);
-                 } else {
-                    parent.appendChild(tokenEl);
+            const parent = document.getElementById('cl-composer-main-container');
+            
+            if (anchor.classList.contains('cl-slot')) {
+                 const currentParent = anchor.parentNode || parent;
+                 if (currentParent) {
+                    currentParent.insertBefore(tokenEl, anchor.nextSibling);
+                    syncAndValidate(currentParent);
                  }
              } else if (anchor.classList.contains('cl-token')) {
-                 if (anchor.parentNode === parent) {
-                    parent.replaceChild(tokenEl, anchor);
+                 const currentParent = anchor.parentNode || parent;
+                 if (currentParent) {
+                     currentParent.insertBefore(tokenEl, anchor);
+                     anchor.remove();
+                     syncAndValidate(currentParent);
                  } else {
-                    parent.appendChild(tokenEl);
+                     // Failsafe
+                     const realAnchor = document.getElementById(anchorId);
+                     if (realAnchor && realAnchor.parentNode) {
+                         realAnchor.parentNode.insertBefore(tokenEl, realAnchor);
+                         realAnchor.remove();
+                         syncAndValidate(realAnchor.parentNode);
+                     } else {
+                         parent.appendChild(tokenEl);
+                         syncAndValidate(parent);
+                     }
                  }
              }
-             syncAndValidate(parent);
-           }
         }
       });
       dropdown.appendChild(option);
@@ -866,7 +876,8 @@ window.loadedCodelessLoveScripts ||= {};
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
         hideDropdown();
       }, 150);
-      syncAndValidate(span.parentElement);
+      
+      // Removed syncAndValidate(span.parentElement) to prevent DOM corruption during dropdown click replacements
     });
 
     span.addEventListener('drop', e => {
