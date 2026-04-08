@@ -506,7 +506,14 @@ window.loadedCodelessLoveScripts ||= {};
     { type: "Search", ret: "List<any>", label: "Do a search for..." },
     { type: "CurrentUser", ret: "user", label: "Current User" },
     { type: "Input", ret: "text", label: "Input value" },
-    { type: "Dynamic", ret: "text", label: "Arbitrary text" }
+    { 
+      type: "ArbitraryText", 
+      ret: "text", 
+      label: "Arbitrary text",
+      propertiesSchema: [
+        { key: "arbitrary_text", label: "", type: "text" }
+      ]
+    }
   ];
 
   function getComputedType(tokenEl) {
@@ -937,9 +944,14 @@ window.loadedCodelessLoveScripts ||= {};
 
       // Handle propertiesSchema UI
       let opDef = null;
+      // Search in general operators schema
       for (const key in BUBBLE_SCHEMA) {
          const found = BUBBLE_SCHEMA[key].find(o => o.op === tokenObj.name);
          if (found) { opDef = found; break; }
+      }
+      // NEW: Also search in Data Sources schema (e.g. Arbitrary Text)
+      if (!opDef) {
+         opDef = DATA_SOURCES.find(ds => ds.type === tokenObj.type);
       }
 
       if (opDef && opDef.propertiesSchema) {
@@ -1138,6 +1150,8 @@ window.loadedCodelessLoveScripts ||= {};
     
     if (token.type === 'Message') {
       text = ":" + (token.name || "unknown");
+    } else if (token.type === 'ArbitraryText') {
+      text = "Arbitrary Text";
     } else if (token.type === 'Search') {
       text = "Search for " + (token.properties?.type_to_find || "...");
     }
