@@ -390,7 +390,10 @@ window.loadedCodelessLoveScripts ||= {};
       const literal = createTextZoneElement('');
       literal.dataset.ephemeral = 'true'; // flag; removed on Escape without content
       vs.replaceWith(literal);
-      literal.focus();
+      
+      // Use setTimeout to ensure the DOM shift is complete before focusing
+      // and triggering the dropdown to avoid race conditions.
+      setTimeout(() => literal.focus(), 0);
     });
     return vs;
   }
@@ -483,6 +486,10 @@ window.loadedCodelessLoveScripts ||= {};
   // Opens the expression dropdown anchored to a LiteralZone.
   // allowText: if true (Hybrid Slot), prepend a "Use text" option.
   function showDropdownForTexLiteral(zone, allowText) {
+    if (dropdownHideTimeout) {
+      clearTimeout(dropdownHideTimeout);
+      dropdownHideTimeout = null;
+    }
     hideDropdown();
     activeDropdown = document.createElement('div');
     activeDropdown.className = 'cl-dropdown';
