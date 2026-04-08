@@ -1,71 +1,148 @@
 # Bubble JSON Configuration & Grammar Commentary
 
-This document describes how Bubble's internal Abstract Syntax Tree (AST) represents dynamic text fields, specifically the `TextExpression` object.
+This document is a companion to the type schema. It documents how Bubble's internal JSON structures work, why they're built the way they are, and the gotchas we've discovered through reverse-engineering.
 
-## The `TextExpression` Wrapper
+---
 
-In Bubble's underlying JSON representation of expressions, any property that allows a mix of static text and dynamic expressions (such as `formatting_for_true` in boolean formatters or `arbitrary_text` in dynamic text blocks) is wrapped in a `TextExpression` object.
+## TextExpression: The "Template Literal" Pattern
 
-### Structure
+### What It Is
 
-A `TextExpression` consists of an `entries` object, which maps string-indices to the content of the field.
+A `TextExpression` is Bubble's way of representing a field that can contain a mix of plain text and dynamic expressions. Think of it like JavaScript template literals:
+
+```js
+`Hello ${CurrentUser.email}, you have ${SearchForThings.count} items`
+```
+
+In Bubble's JSON, this becomes:
 
 ```json
 {
   "type": "TextExpression",
   "entries": {
-    "0": "Static prefix text ",
-    "1": { 
-      "type": "GetElement",
-      "properties": { "element_id": "..." },
-      "next": { ... }
-    },
-    "2": " static suffix text"
+    "0": "Hello ",
+    "1": { "type": "CurrentUser", "next": { "type": "Message", "name": "email" } },
+    "2": ", you have ",
+    "3": { "type": "Search", "next": { "type": "Message", "name": "count" } },
+    "4": " items"
   }
 }
 ```
 
-## Why Bubble Uses This Pattern
+### Where It Appears
 
-**Interleaved Content Support**: The primary reason for this structure is to allow for **interleaved content** (mixing plain text strings and dynamic code tokens in the same line).
+Any property that accepts rich text content is wrapped in a `TextExpression`:
+- `arbitrary_text` on the `ArbitraryText` data source
+- `formatting_for_true` / `formatting_for_false` on `:format_boolean`
+- Conditional text fields, email bodies, etc.
 
-By using an index-based `entries` map, Bubble can perfectly reconstruct the order of:
-1. Static Text (at index 0)
-2. Dynamic Expression (at index 1)
-3. More Static Text (at index 2)
-4. A Second Dynamic Expression (at index 3)
-5. And so on...
+### The Strict Interleaving Rule
 
-### The "Empty Wrapper" Pattern
-Even if an expression has no static text, Bubble often maintains the `0, 1, 2` structure:
-*   **"0": ""** (Empty prefix)
-*   **"1": { expression }**
-*   **"2": ""** (Empty suffix)
+Bubble enforces a rigid alternating pattern:
 
-This ensures the user can always click **before** or **after** an existing dynamic token to insert more text or another token without needing to rewrite the internal logic of the first token.
+| Index | Type | Example |
+|-------|------|---------|
+| 0 | String literal | `"Hello "` |
+| 1 | Expression node | `{ type: "CurrentUser", ... }` |
+| 2 | String literal | `", you have "` |
+| 3 | Expression node | `{ type: "Search", ... }` |
+| 4 | String literal | `" items"` |
 
-## Implementation Details in Advanced Composer
+**Even indices (0, 2, 4...)** are always string literals.
+**Odd indices (1, 3, 5...)** are always expression chain objects.
 
-In our `expression_advanced_composer.js`, we handle this using:
+### Why Bubble Builds It This Way
 
-1.  **Unpacker**: Scans the `entries` map and looks for the first index that contains an object with a `type`. It prioritizes the "expression" part of the interleaved content for the composer UI.
-2.  **Packer**: When saving a `text`-type property (as defined in the `propertiesSchema`), the packer automatically re-wraps the built expression into the `0, 1, 2` entry structure. This maintains 100% compatibility with Bubble's editor expectation that a `TextExpression` is present.
+The strict interleaving pattern exists for several practical reasons:
 
-## ⚠️ Critical Gotcha: Literal Strings vs. AST Nodes
+1. **Guaranteed Insertion Points**: Every expression is always bordered by string entries on both sides. This means the editor always has a valid "click target" where the user can place their cursor to type more text or insert another expression. Without the empty strings, the editor would need complex logic to figure out where new content can be inserted.
 
-One of the most important discoveries regarding `TextExpression` is how it handles static content.
+2. **Simplified Rendering**: The evaluation engine can simply iterate through entries in order: render string, evaluate expression, render string, evaluate expression... There's no need for type-checking at each index because the position alone tells you what it is.
 
-**Bubble does not have a "String" or "Literal" node type in its terminal AST.**
-In our internal composer logic, we often use a `{ type: "String", value: "Banana" }` wrapper to represent text in the UI pills, but when "Packing" the JSON for Bubble, this must be discarded.
+3. **Simplified Serialization**: When the user types text between two expressions, the editor just updates the string at the even index between them. When the user inserts a new expression, the editor splits the current string entry into two halves and inserts the expression at a new odd index between them. The index parity acts as a built-in type discriminator.
 
-### Correct Serialization
+4. **Adjacent Expression Handling**: When two expressions are placed next to each other with no text between them, Bubble inserts an empty string `""` at the intervening even index. This maintains the alternating pattern and ensures the user can always click between the two pills to type text there later.
+
+### Examples of the Pattern
+
+**Plain text only:**
+```json
+{ "entries": { "0": "just some text" } }
+```
+
+**Expression only (no surrounding text):**
+```json
+{ "entries": { "0": "", "1": { "type": "CurrentUser", ... }, "2": "" } }
+```
+
+**Two adjacent expressions (no text between them):**
+```json
+{
+  "entries": {
+    "0": "",
+    "1": { "type": "GetElement", ... },
+    "2": "",
+    "3": { "type": "CurrentUser", ... },
+    "4": ""
+  }
+}
+```
+
+**Mixed text and expressions:**
+```json
+{
+  "entries": {
+    "0": "Ban",
+    "1": { "type": "CurrentUser", "next": { "name": "email" } },
+    "2": "ana!,one,two",
+    "3": { "type": "GetElement", ... },
+    "4": "three,four"
+  }
+}
+```
+
+---
+
+## ⚠️ Critical Gotcha: No "String" Node Type in Bubble
+
+Bubble does **not** have a `{ type: "String", value: "..." }` node in its expression grammar. That's an internal concept we use in our composer UI to represent editable text pills.
+
+When packing JSON for Bubble:
 - **WRONG**: `entries: { "0": { "type": "String", "value": "no" } }`
 - **RIGHT**: `entries: { "0": "no" }`
 
-If any entry in a `TextExpression` is just static text, it **must** be a raw string literal. If it contains a dynamic expression, that entry must be the first node of that expression chain.
-
-### Impact on Packing Logic
-The `packExpression` function now specifically checks if a property's packed result is a single, un-chained `String` node. If so, it extracts the `value` and maps it directly to entry `"0"` as a literal. If the result is a deeper expression chain, it defaults to the `0: "", 1: <object>, 2: ""` structure to satisfy Bubble's interleaved content requirements.
+Static text in a `TextExpression` must always be a raw string literal at an even index.
 
 ---
-*Created during Phase 6 of the Advanced Expression Composer development.*
+
+## Expression Chains: The `.next` Pattern
+
+Expressions in Bubble are linked lists. Each node has a `next` property pointing to the next operation in the chain:
+
+```json
+{
+  "type": "ArbitraryText",
+  "properties": { ... },
+  "next": {
+    "type": "Message",
+    "name": "to_uppercase",
+    "next": {
+      "type": "Message",
+      "name": "length",
+      "next": null
+    }
+  }
+}
+```
+
+This reads as: `ArbitraryText → :to_uppercase → :length`
+
+Key rules:
+- The first node is always a **Data Source** (e.g., `ArbitraryText`, `CurrentUser`, `GetElement`).
+- Subsequent `.next` nodes are always **Messages** (operators like `:to_uppercase`, `:length`).
+- The chain terminates when `next` is `null` or absent.
+- `properties` on a node hold its configuration (e.g., `arbitrary_text` content, `format_boolean` yes/no values).
+
+---
+
+*This document is actively maintained as we discover more about Bubble's internal JSON structure.*
