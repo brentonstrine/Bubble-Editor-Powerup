@@ -228,13 +228,19 @@ window.loadedCodelessLoveScripts ||= {};
     
     const overlay = createPopup();
     overlay.style.setProperty('display', 'flex', 'important');
+    
+    // Ensure the overlay is visible and centered
+    overlay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
     // Small delay to trigger transitions
     setTimeout(() => {
       overlay.classList.add('visible');
     }, 10);
     
-    console.log("💙❤️ Popup opened with expression:", expressionJson);
-    renderExpression(expressionJson);
+    console.log("💙❤️ Popup opened with expression (Cloned):", _cl_originalExpressionJson);
+    // DEBUG: Log the absolute raw structure before any unpacking/rendering
+    console.log("💙❤️ RAW JSON (DEBUG):", JSON.stringify(expressionJson, null, 2));
+    renderExpression(_cl_originalExpressionJson);
   }
 
   function handleSave() {
@@ -268,15 +274,22 @@ window.loadedCodelessLoveScripts ||= {};
     // General Handle: TextExpression wrapper (found in properties like format_boolean)
     // Extract the FIRST expression node found in the entries map.
     if (jsonNode.type === 'TextExpression' && jsonNode.entries) {
-      const firstExprKey = Object.keys(jsonNode.entries).find(k => {
+      // Find keys that look like expressions
+      const exprKeys = Object.keys(jsonNode.entries).filter(k => {
         const val = jsonNode.entries[k];
         return val && typeof val === 'object' && val.type;
       });
-      if (firstExprKey) return unpackExpression(jsonNode.entries[firstExprKey]);
-      // If it's just a raw number/string in entries, wrap it so it renders as a token
-      const firstRawKey = Object.keys(jsonNode.entries)[0];
-      if (firstRawKey !== undefined) {
-         return [{ type: 'String', value: jsonNode.entries[firstRawKey] }];
+      
+      if (exprKeys.length > 0) {
+        // Find the node with the longest chain or just the first valid one
+        const firstExpr = jsonNode.entries[exprKeys[0]];
+        return unpackExpression(firstExpr);
+      }
+      
+      // Fallback for raw text in entries (e.g. entry "0" usually has the value if it's just raw text)
+      const rawValues = Object.values(jsonNode.entries).filter(v => typeof v === 'string' && v.trim());
+      if (rawValues.length > 0) {
+         return [{ type: 'String', value: rawValues[0] }];
       }
       return [];
     }
@@ -302,14 +315,16 @@ window.loadedCodelessLoveScripts ||= {};
     if (!composerEl) return null;
     
     const tokens = Array.from(composerEl.children).filter(el => el.classList.contains('cl-token'));
-    if (tokens.length === 0) return null;
     
     // Recursive node chain builder
     function buildNode(index) {
       if (index >= tokens.length) return null;
       
       const tokenEl = tokens[index];
-      const rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
+      
+      // CRITICAL: Always parse a FRESH copy from the dataset to avoid mutation issues
+      // between different parts of the recursive packing chain.
+      let rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
       
       // Look for inner interactive args layer
       const argContainer = Array.from(tokenEl.children).find(c => c.classList.contains('cl-arg-container'));
@@ -319,7 +334,7 @@ window.loadedCodelessLoveScripts ||= {};
          else delete rawData.args;
       } else {
          // Handle propertiesSchema blocks
-         const propGroups = Array.from(tokenEl.querySelectorAll('.cl-prop-group'));
+         const propGroups = Array.from(tokenEl.querySelectorAll(':scope > .cl-prop-group'));
          if (propGroups.length > 0) {
             rawData.properties ||= {};
 
@@ -328,6 +343,10 @@ window.loadedCodelessLoveScripts ||= {};
             for (const key in BUBBLE_SCHEMA) {
                const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
                if (found) { opDef = found; break; }
+            }
+            // Also search in Data Sources schema
+            if (!opDef) {
+               opDef = DATA_SOURCES.find(ds => ds.type === rawData.type);
             }
 
             propGroups.forEach(group => {
@@ -340,10 +359,18 @@ window.loadedCodelessLoveScripts ||= {};
                   // wrap it in a TextExpression object to match Bubble's expected AST.
                   const schemaItem = opDef && opDef.propertiesSchema && opDef.propertiesSchema.find(s => s.key === pkey);
                   if (pPacked && schemaItem && schemaItem.type === 'text') {
-                     pPacked = {
-                        type: "TextExpression",
-                        entries: { "0": "", "1": pPacked, "2": "" }
-                     };
+                     // Bubble expects literal strings inside TextExpression, not our internal AST {type: "String"} nodes.
+                     if (pPacked.type === 'String' && !pPacked.next) {
+                         pPacked = {
+                            type: "TextExpression",
+                            entries: { "0": pPacked.value !== undefined ? String(pPacked.value) : "" }
+                         };
+                     } else {
+                         pPacked = {
+                            type: "TextExpression",
+                            entries: { "0": "", "1": pPacked, "2": "" }
+                         };
+                     }
                   }
                   
                   if (pPacked) rawData.properties[pkey] = pPacked;
@@ -357,9 +384,16 @@ window.loadedCodelessLoveScripts ||= {};
                      .filter(node => node.nodeType === Node.TEXT_NODE)
                      .map(node => node.textContent).join('').trim();
             
-            if (rawData.type === 'Number') rawData.value = Number(rawText);
-            else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
-            else rawData.value = rawText;
+            // CRITICAL: If rawData has an empty value but the DOM has text, use the DOM text
+            if (rawText && !rawData.value) {
+               if (rawData.type === 'Number') rawData.value = Number(rawText);
+               else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
+               else rawData.value = rawText;
+            } else {
+               if (rawData.type === 'Number') rawData.value = Number(rawText);
+               else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
+               else rawData.value = rawText;
+            }
          }
       }
       
@@ -370,7 +404,16 @@ window.loadedCodelessLoveScripts ||= {};
       return rawData;
     }
     
-    return buildNode(0);
+    const result = buildNode(0);
+    if (!result) {
+       // FALLBACK: If no tokens, check the slots for raw text input
+       const slots = Array.from(composerEl.querySelectorAll(':scope > .cl-slot'));
+       const rawText = slots.map(s => s.textContent).join('').replace(/\+/g, '').trim();
+       if (rawText) {
+          return { type: "String", value: rawText };
+       }
+    }
+    return result;
   }
 
   function triggerRepack() {
@@ -920,6 +963,11 @@ window.loadedCodelessLoveScripts ||= {};
     span.dataset.bubbleJson = JSON.stringify(tokenObj);
     span.draggable = true;
     
+    // Set initial text content ONLY for terminal primitive values
+    if (tokenObj.type === 'Number' || tokenObj.type === 'String' || tokenObj.type === 'sys.bool') {
+       span.textContent = renderTokenText(tokenObj);
+    }
+    
     if (tokenObj.args !== undefined) {
       // Operator has arguments! We build a nested structure
       const labelNode = document.createElement('span');
@@ -938,9 +986,12 @@ window.loadedCodelessLoveScripts ||= {};
       unpackedArgs.forEach(arg => argContainer.appendChild(createTokenElement(arg)));
       span.appendChild(argContainer);
     } else {
-      const labelSpan = document.createElement('span');
-      labelSpan.textContent = renderTokenText(tokenObj);
-      span.appendChild(labelSpan);
+      // For non-primitives, we need a label span (e.g. ":format_boolean")
+      if (tokenObj.type !== 'Number' && tokenObj.type !== 'String' && tokenObj.type !== 'sys.bool') {
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = renderTokenText(tokenObj);
+        span.appendChild(labelSpan);
+      }
 
       // Handle propertiesSchema UI
       let opDef = null;
@@ -989,7 +1040,7 @@ window.loadedCodelessLoveScripts ||= {};
     
     span.addEventListener('dragstart', e => {
       // If drag started inside a nested property group, let that sub-element handle it
-      if (e.target.closest('.cl-prop-group')) return;
+      if (e.target && e.target.nodeType === 1 && e.target.closest('.cl-prop-group')) return;
 
       e.stopPropagation();
       console.log("💙❤️ Token Dragstart");
@@ -1040,6 +1091,18 @@ window.loadedCodelessLoveScripts ||= {};
       }, 150);
       
       // Removed syncAndValidate(span.parentElement) to prevent DOM corruption during dropdown click replacements
+      
+      // Update data-json for primitives when user finishes typing
+      const rawData = JSON.parse(span.dataset.bubbleJson || "{}");
+      if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
+         const newText = span.textContent.trim();
+         if (rawData.type === 'Number') rawData.value = Number(newText);
+         else if (rawData.type === 'sys.bool') rawData.value = (newText === 'true' || newText === 'yes');
+         else rawData.value = newText;
+         
+         span.dataset.bubbleJson = JSON.stringify(rawData);
+         triggerRepack();
+      }
     });
 
     span.addEventListener('drop', e => {
@@ -1053,7 +1116,7 @@ window.loadedCodelessLoveScripts ||= {};
     const DRAG_THRESHOLD = 5;
     span.addEventListener('mousedown', (e) => {
       // If clicking inside a nested property group, don't trigger parent selection/drag
-      if (e.target.closest('.cl-prop-group')) return;
+      if (e.target && e.target.nodeType === 1 && e.target.closest('.cl-prop-group')) return;
 
       e.stopPropagation();
       
