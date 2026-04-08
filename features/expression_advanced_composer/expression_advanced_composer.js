@@ -322,6 +322,14 @@ window.loadedCodelessLoveScripts ||= {};
          const propGroups = Array.from(tokenEl.querySelectorAll('.cl-prop-group'));
          if (propGroups.length > 0) {
             rawData.properties ||= {};
+
+            // Resolve the operator definition to check for property types (TextExpression wrapping)
+            let opDef = null;
+            for (const key in BUBBLE_SCHEMA) {
+               const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
+               if (found) { opDef = found; break; }
+            }
+
             propGroups.forEach(group => {
                const pkey = group.dataset.propKey;
                const pContainer = group.querySelector('.cl-arg-container');
@@ -330,7 +338,7 @@ window.loadedCodelessLoveScripts ||= {};
                   
                   // General Handle: If this is a 'text' type property in the schema, 
                   // wrap it in a TextExpression object to match Bubble's expected AST.
-                  const schemaItem = opDef && opDef.propertiesSchema.find(s => s.key === pkey);
+                  const schemaItem = opDef && opDef.propertiesSchema && opDef.propertiesSchema.find(s => s.key === pkey);
                   if (pPacked && schemaItem && schemaItem.type === 'text') {
                      pPacked = {
                         type: "TextExpression",
@@ -428,6 +436,8 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "round", arg: "number", ret: "number", label: ":rounded to" },
       { op: "floor", arg: "null", ret: "number", label: ":floor" },
       { op: "ceil", arg: "null", ret: "number", label: ":ceiling" },
+      { op: "is_empty", arg: "null", ret: "sys.bool", label: "is empty" },
+      { op: "is_not_empty", arg: "null", ret: "sys.bool", label: "is not empty" },
       { op: "format_number", arg: "null", ret: "text", label: ":formatted as..." }
     ],
     "sys.bool": [
@@ -466,7 +476,15 @@ window.loadedCodelessLoveScripts ||= {};
     ],
     "user": [
       { op: "email", arg: "null", ret: "text", label: "'s email" },
+      { op: "slug", arg: "null", ret: "text", label: "'s slug" },
+      { op: "Created Date", arg: "null", ret: "date", label: "'s Creation Date" },
+      { op: "Modified Date", arg: "null", ret: "date", label: "'s Modified Date" },
+      { op: "unique id", arg: "null", ret: "text", label: "'s unique id" },
+      { op: "link", arg: "null", ret: "text", label: "'s link" },
+      { op: "email confirmed", arg: "null", ret: "sys.bool", label: "'s email confirmed" },
       { op: "is_logged_in", arg: "null", ret: "sys.bool", label: "is logged in" },
+      { op: "is_logged_out", arg: "null", ret: "sys.bool", label: "is logged out" },
+      { op: "uses_password", arg: "null", ret: "sys.bool", label: "uses password" },
       { op: "equals", arg: "user", ret: "sys.bool", label: "is" },
       { op: "not_equals", arg: "user", ret: "sys.bool", label: "is not" }
     ],
@@ -475,6 +493,8 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "not_equals", arg: "date", ret: "sys.bool", label: "is not" },
       { op: "greater_than", arg: "date", ret: "sys.bool", label: ">" },
       { op: "less_than", arg: "date", ret: "sys.bool", label: "<" },
+      { op: "is_empty", arg: "null", ret: "sys.bool", label: "is empty" },
+      { op: "is_not_empty", arg: "null", ret: "sys.bool", label: "is not empty" },
       { op: "change_days", arg: "number", ret: "date", label: "+(days):" },
       { op: "change_months", arg: "number", ret: "date", label: "+(months):" },
       { op: "format_date", arg: "null", ret: "text", label: ":formatted as..." },
@@ -533,6 +553,7 @@ window.loadedCodelessLoveScripts ||= {};
     if (rawData.properties?.type) return rawData.properties.type;
     
     // Bubble internal defaults
+    if (rawData.type === 'CurrentUser') return 'user';
     if (rawData.type === 'String' || rawData.type === 'ArbitraryText') return 'text';
     if (rawData.type === 'Number') return 'number';
     
