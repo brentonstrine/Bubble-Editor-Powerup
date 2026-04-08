@@ -265,6 +265,22 @@ window.loadedCodelessLoveScripts ||= {};
   function unpackExpression(jsonNode) {
     if (!jsonNode) return [];
 
+    // General Handle: TextExpression wrapper (found in properties like format_boolean)
+    // Extract the FIRST expression node found in the entries map.
+    if (jsonNode.type === 'TextExpression' && jsonNode.entries) {
+      const firstExprKey = Object.keys(jsonNode.entries).find(k => {
+        const val = jsonNode.entries[k];
+        return val && typeof val === 'object' && val.type;
+      });
+      if (firstExprKey) return unpackExpression(jsonNode.entries[firstExprKey]);
+      // If it's just a raw number/string in entries, wrap it so it renders as a token
+      const firstRawKey = Object.keys(jsonNode.entries)[0];
+      if (firstRawKey !== undefined) {
+         return [{ type: 'String', value: jsonNode.entries[firstRawKey] }];
+      }
+      return [];
+    }
+
     let flatArray = [];
     let current = jsonNode;
 
@@ -310,7 +326,18 @@ window.loadedCodelessLoveScripts ||= {};
                const pkey = group.dataset.propKey;
                const pContainer = group.querySelector('.cl-arg-container');
                if (pkey && pContainer) {
-                  const pPacked = packExpression(pContainer);
+                  let pPacked = packExpression(pContainer);
+                  
+                  // General Handle: If this is a 'text' type property in the schema, 
+                  // wrap it in a TextExpression object to match Bubble's expected AST.
+                  const schemaItem = opDef && opDef.propertiesSchema.find(s => s.key === pkey);
+                  if (pPacked && schemaItem && schemaItem.type === 'text') {
+                     pPacked = {
+                        type: "TextExpression",
+                        entries: { "0": "", "1": pPacked, "2": "" }
+                     };
+                  }
+                  
                   if (pPacked) rawData.properties[pkey] = pPacked;
                }
             });
@@ -411,8 +438,8 @@ window.loadedCodelessLoveScripts ||= {};
       { 
         op: "format_boolean", 
         propertiesSchema: [
-          { key: "text_for_yes", label: "yes", type: "text" },
-          { key: "text_for_no", label: "no", type: "text" }
+          { key: "formatting_for_true", label: "yes", type: "text" },
+          { key: "formatting_for_false", label: "no", type: "text" }
         ],
         ret: "text", 
         label: ":formatted as text" 

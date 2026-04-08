@@ -95,7 +95,7 @@ body {
   display: flex !important;
   flex-wrap: wrap !important;
   align-items: center !important;
-  gap: 0px !important;
+  gap: 0px 5px !important; /* 0px horizontal (handled by slot margins), 5px vertical */
   padding: 16px !important;
   border: 1px solid #333 !important;
   border-radius: 8px !important;
@@ -143,6 +143,12 @@ body {
   background: rgba(255, 255, 255, 0.05) !important;
   color: rgba(255, 255, 255, 0.8) !important;
   border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+}
+
+.cl-slot:last-child:hover {
+  background: rgba(33, 150, 243, 0.2) !important;
+  border: 1px solid rgba(33, 150, 243, 0.4) !important;
+  color: #2196F3 !important;
 }
 
 .cl-slot:focus {
