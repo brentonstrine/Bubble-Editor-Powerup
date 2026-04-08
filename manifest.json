@@ -1,5 +1,5 @@
 {
-  "version": "2.34.42",
+  "version": "2.35.0",
   "name": "Bubble Editor Powerup from Codeless Love",
   "description": "Enhances the Bubble Editor with toggleable features (not affiliated with Bubble).",
   "action": {
@@ -8,7 +8,7 @@
   },
   "permissions": [
     "storage",
-    "scripting",  
+    "scripting",
     "tabs"
   ],
   "optional_host_permissions": [
@@ -29,8 +29,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["extension-icons/icon-21.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "extension-icons/icon-21.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ],
   "manifest_version": 3

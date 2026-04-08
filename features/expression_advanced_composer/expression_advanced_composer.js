@@ -271,25 +271,21 @@ window.loadedCodelessLoveScripts ||= {};
   function unpackExpression(jsonNode) {
     if (!jsonNode) return [];
 
-    // General Handle: TextExpression wrapper (found in properties like format_boolean)
-    // Extract the FIRST expression node found in the entries map.
+    // General Handle: TextExpression wrapper
+    // Delegates to dedicated function that preserves full interleaved sequence.
     if (jsonNode.type === 'TextExpression' && jsonNode.entries) {
-      // Find keys that look like expressions
+      // Fallback for non-property contexts: return the first expression in the entries.
       const exprKeys = Object.keys(jsonNode.entries).filter(k => {
         const val = jsonNode.entries[k];
         return val && typeof val === 'object' && val.type;
-      });
+      }).sort((a, b) => Number(a) - Number(b));
       
       if (exprKeys.length > 0) {
-        // Find the node with the longest chain or just the first valid one
-        const firstExpr = jsonNode.entries[exprKeys[0]];
-        return unpackExpression(firstExpr);
+        return unpackExpression(jsonNode.entries[exprKeys[0]]);
       }
-      
-      // Fallback for raw text in entries (e.g. entry "0" usually has the value if it's just raw text)
       const rawValues = Object.values(jsonNode.entries).filter(v => typeof v === 'string' && v.trim());
       if (rawValues.length > 0) {
-         return [{ type: 'String', value: rawValues[0] }];
+        return [{ type: 'String', value: rawValues[0] }];
       }
       return [];
     }
@@ -308,6 +304,387 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     return flatArray;
+  }
+
+  // --- TextExpression Engine ---
+  // Based on the Unified Theory: entries are a sequential list of typed components.
+  // Type is determined by VALUE inspection, not index parity.
+
+  // Converts a TextExpression JSON node into an ordered array of typed parts.
+  // { kind: 'literal', value: '...' } → editable text zone
+  // { kind: 'expression', node: {...} } → expression pill zone
+  function unpackTextExpression(texNode) {
+    // Case 1: null/undefined → single blank literal (Arbitrary Text empty state)
+    if (!texNode) return [{ kind: 'literal', value: '' }];
+
+    // Case 2: Not a TextExpression (bare expression node passed directly)
+    if (texNode.type !== 'TextExpression' || !texNode.entries) {
+      return [{ kind: 'expression', node: texNode }];
+    }
+
+    // Case 3: Parse entries in numeric index order, dispatching by value type
+    const keys = Object.keys(texNode.entries).sort((a, b) => Number(a) - Number(b));
+    const parts = keys.map(k => {
+      const val = texNode.entries[k];
+      if (typeof val === 'string') {
+        return { kind: 'literal', value: val };
+      } else if (val && typeof val === 'object' && val.type) {
+        return { kind: 'expression', node: val };
+      }
+      return null;
+    }).filter(Boolean);
+
+    // Guarantee at least one part so the container is never empty
+    if (parts.length === 0) return [{ kind: 'literal', value: '' }];
+    return parts;
+  }
+
+  // Renders a text-type property container as an interleaved sequence of
+  // LiteralZones (editable text) and ExprZones (expression pill chains).
+  function renderTextExpressionContainer(pContainer, texNode) {
+    pContainer.innerHTML = '';
+    pContainer.dataset.textExpression = 'true';
+
+    const parts = unpackTextExpression(texNode);
+
+    parts.forEach((part, i) => {
+      if (part.kind === 'literal') {
+        pContainer.appendChild(createTextZoneElement(part.value));
+      } else {
+        // Virtual slot before expression if no literal precedes it
+        const prev = parts[i - 1];
+        if (!prev || prev.kind !== 'literal') {
+          pContainer.appendChild(createVirtualSlotElement(pContainer));
+        }
+
+        const exprZone = document.createElement('span');
+        exprZone.className = 'cl-tex-expr-zone';
+        const subTokens = unpackExpression(part.node);
+        subTokens.forEach(t => exprZone.appendChild(createTokenElement(t)));
+        syncAndValidate(exprZone);
+        pContainer.appendChild(exprZone);
+
+        // Virtual slot after expression if no literal follows it
+        const next = parts[i + 1];
+        if (!next || next.kind !== 'literal') {
+          pContainer.appendChild(createVirtualSlotElement(pContainer));
+        }
+      }
+    });
+
+    // Ensure virtual slots are synced for initial state (e.g. text-only or expression-only)
+    syncVirtualSlots(pContainer);
+  }
+
+  // A virtual slot rendered before/after an ExprZone when the JSON contains no
+  // adjacent LiteralZone (e.g. Text Element with a lone expression).
+  // Clicking it materialises a real LiteralZone and focuses it (Hybrid Slot).
+  function createVirtualSlotElement(pContainer) {
+    const vs = document.createElement('span');
+    vs.className = 'cl-tex-virtual-slot';
+    vs.textContent = '+';
+    vs.addEventListener('mousedown', e => e.stopPropagation());
+    vs.addEventListener('click', e => {
+      e.stopPropagation();
+      // Materialise a real LiteralZone in place of the virtual slot
+      const literal = createTextZoneElement('');
+      literal.dataset.ephemeral = 'true'; // flag; removed on Escape without content
+      vs.replaceWith(literal);
+      literal.focus();
+    });
+    return vs;
+  }
+
+  // Editable inline text zone for TextExpression literal entries.
+  // Empty zones act as Hybrid Slots (open expression dropdown + accept text).
+  // Non-empty zones support ⌘/ (Mac) / Ctrl+/ (Windows) to insert an expression.
+  function createTextZoneElement(value) {
+    const zone = document.createElement('span');
+    zone.className = 'cl-tex-literal';
+    zone.contentEditable = 'true';
+    zone.textContent = value;
+    zone.setAttribute('placeholder', '...');
+
+    // Track the typed text while the Hybrid dropdown is open
+    let hybridDropdownOpen = false;
+    let capturedTypedText = '';
+    let cmdSlashCursorIndex = -1;
+
+    zone.addEventListener('mousedown', e => e.stopPropagation());
+    zone.addEventListener('click', e => e.stopPropagation());
+
+    zone.addEventListener('focus', () => {
+      showTexHint();
+      // Hybrid Slot: open dropdown immediately if zone is empty
+      if (!zone.textContent.trim()) {
+        hybridDropdownOpen = true;
+        capturedTypedText = '';
+        showDropdownForTexLiteral(zone, true);
+      }
+    });
+
+    zone.addEventListener('blur', () => {
+      hideTexHint();
+      hybridDropdownOpen = false;
+      // If this was ephemeral (created by virtual slot) and still empty, remove it
+      if (zone.dataset.ephemeral && !zone.textContent.trim()) {
+        const pContainer = zone.closest('[data-text-expression]');
+        zone.remove();
+        if (pContainer) syncVirtualSlots(pContainer);
+      }
+      setTimeout(triggerRepack, 0);
+    });
+
+    zone.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); return; }
+
+      // ⌘/ (Mac) or Ctrl+/ (Windows) → insert expression into non-empty literal
+      const isCmdSlash = (e.key === '/' && (e.metaKey || e.ctrlKey));
+      if (isCmdSlash) {
+        e.preventDefault();
+        // Capture cursor position so Split knows where to cut
+        const sel = window.getSelection();
+        cmdSlashCursorIndex = (sel && sel.rangeCount > 0)
+          ? sel.getRangeAt(0).startOffset
+          : zone.textContent.length;
+        showDropdownForTexLiteral(zone, false);
+        return;
+      }
+
+      // Escape: dismiss dropdown and optionally remove ephemeral zone
+      if (e.key === 'Escape') {
+        hideDropdown();
+        hybridDropdownOpen = false;
+        if (zone.dataset.ephemeral && !zone.textContent.trim()) {
+          const pContainer = zone.closest('[data-text-expression]');
+          zone.remove();
+          if (pContainer) syncVirtualSlots(pContainer);
+        }
+        return;
+      }
+
+      // While hybrid dropdown is open, feed typed characters into it
+      if (hybridDropdownOpen) {
+        // Let the keystroke update textContent first, then refresh the dropdown
+        setTimeout(() => {
+          capturedTypedText = zone.textContent;
+          refreshHybridDropdown(zone, capturedTypedText);
+        }, 0);
+      }
+    });
+
+    // Called when the user selects an expression from the dropdown (any mode)
+    zone.dataset.onTexExprSelected = 'true'; // marker read by showDropdownForTexLiteral
+
+    return zone;
+  }
+
+  // Opens the expression dropdown anchored to a LiteralZone.
+  // allowText: if true (Hybrid Slot), prepend a "Use text" option.
+  function showDropdownForTexLiteral(zone, allowText) {
+    hideDropdown();
+    activeDropdown = document.createElement('div');
+    activeDropdown.className = 'cl-dropdown';
+
+    const rect = zone.getBoundingClientRect();
+    activeDropdown.style.left = rect.left + 'px';
+    activeDropdown.style.top = (rect.bottom + 4) + 'px';
+
+    const anchorId = 'cl-tex-anchor-' + Math.random().toString(36).substr(2, 9);
+    activeDropdown.dataset.anchorId = anchorId;
+    activeDropdown.dataset.texLiteralMode = 'true';
+    zone.id = anchorId;
+
+    if (allowText) {
+      addDropdownItems(activeDropdown, 'Insert expression or type text', []);
+      // "Use text" option is dynamically injected as the user types (see refreshHybridDropdown)
+    }
+
+    // Always include Data Sources since we're at the start of an expression chain
+    addDropdownItems(activeDropdown, 'Data Sources', DATA_SOURCES.map(d => ({
+      label: d.label,
+      val: d,
+      onSelect: () => performTexSplit(zone, d)
+    })));
+
+    const overlay = document.getElementById('cl-composer-overlay');
+    if (overlay) overlay.appendChild(activeDropdown);
+  }
+
+  // Refreshes the hybrid dropdown's "Use text" option as the user types
+  function refreshHybridDropdown(zone, text) {
+    if (!activeDropdown || !activeDropdown.dataset.texLiteralMode) return;
+    // Remove previous "use text" option if present
+    const existing = activeDropdown.querySelector('.cl-tex-use-text-option');
+    if (existing) existing.remove();
+    if (text.trim()) {
+      const useText = document.createElement('div');
+      useText.className = 'cl-option cl-tex-use-text-option';
+      useText.textContent = `Use text: "${text}"`;
+      useText.addEventListener('mousedown', e => e.preventDefault());
+      useText.addEventListener('click', e => {
+        e.stopPropagation();
+        hideDropdown();
+        // The text is already in zone.textContent — just close and repack
+        delete zone.dataset.ephemeral;
+        const pContainer = zone.closest('[data-text-expression]');
+        if (pContainer) syncVirtualSlots(pContainer);
+        setTimeout(triggerRepack, 0);
+      });
+      activeDropdown.insertBefore(useText, activeDropdown.firstChild);
+    }
+  }
+
+  // Performs the Split operation: replaces LiteralZone with [left, ExprZone, right]
+  function performTexSplit(zone, exprDef) {
+    const pContainer = zone.closest('[data-text-expression]');
+    if (!pContainer) return;
+
+    const cursorIndex = (zone.id && zone.dataset.ephemeral != null)
+      ? 0
+      : (window.__texCmdSlashCursor != null ? window.__texCmdSlashCursor : zone.textContent.length);
+    window.__texCmdSlashCursor = null;
+
+    const fullText = zone.textContent;
+    const leftText = fullText.substring(0, cursorIndex);
+    const rightText = fullText.substring(cursorIndex);
+
+    const leftLiteral = createTextZoneElement(leftText);
+    const exprZone = document.createElement('span');
+    exprZone.className = 'cl-tex-expr-zone';
+    const newToken = createTokenElement({ ...exprDef, type: exprDef.type });
+    exprZone.appendChild(newToken);
+    syncAndValidate(exprZone);
+    const rightLiteral = createTextZoneElement(rightText);
+
+    zone.replaceWith(leftLiteral, exprZone, rightLiteral);
+    syncVirtualSlots(pContainer);
+    triggerRepack();
+    rightLiteral.focus();
+  }
+
+  // Merge operation: when an ExprZone is deleted, collapse surrounding LiteralZones
+  function mergeAroundExprZone(exprZone) {
+    const pContainer = exprZone.parentElement;
+    if (!pContainer || !pContainer.dataset.textExpression) return;
+
+    const prev = exprZone.previousElementSibling;
+    const next = exprZone.nextElementSibling;
+    const leftText = (prev && prev.classList.contains('cl-tex-literal')) ? prev.textContent : '';
+    const rightText = (next && next.classList.contains('cl-tex-literal')) ? next.textContent : '';
+    const mergedText = leftText + rightText;
+
+    const merged = createTextZoneElement(mergedText);
+    exprZone.replaceWith(merged);
+    if (prev && prev.classList.contains('cl-tex-literal')) prev.remove();
+    if (next && next.classList.contains('cl-tex-literal')) next.remove();
+
+    // Re-add virtual slots if needed (e.g. if merged is the only child)
+    syncVirtualSlots(pContainer);
+    triggerRepack();
+  }
+
+  // Ensures virtual slots (+) are available as insertion points around LiteralZones/ExprZones
+  function syncVirtualSlots(pContainer) {
+    // 1. Remove all existing virtual slots first to recalculate
+    pContainer.querySelectorAll('.cl-tex-virtual-slot').forEach(vs => vs.remove());
+    
+    const children = Array.from(pContainer.children).filter(c => 
+      c.classList.contains('cl-tex-literal') || c.classList.contains('cl-tex-expr-zone')
+    );
+
+    children.forEach((child, i) => {
+      // Rule: ExprZones always need a slot/literal on both sides
+      if (child.classList.contains('cl-tex-expr-zone')) {
+        const prev = children[i - 1];
+        const next = children[i + 1];
+        if (!prev || !prev.classList.contains('cl-tex-literal')) {
+          child.before(createVirtualSlotElement(pContainer));
+        }
+        if (!next || !next.classList.contains('cl-tex-literal')) {
+          child.after(createVirtualSlotElement(pContainer));
+        }
+      } 
+      // Rule: Populated LiteralZones need an insertion point (virtual slot) after them 
+      // (unless an ExprZone already exists there)
+      else if (child.classList.contains('cl-tex-literal') && child.textContent.trim()) {
+        const next = children[i + 1];
+        if (!next || !next.classList.contains('cl-tex-expr-zone')) {
+          child.after(createVirtualSlotElement(pContainer));
+        }
+        // Also ensure one before if it's the start
+        const prev = children[i - 1];
+        if (!prev || !prev.classList.contains('cl-tex-expr-zone')) {
+           child.before(createVirtualSlotElement(pContainer));
+        }
+      }
+    });
+
+    // Final fallback: if container is empty (rare), hide/show as needed
+    if (pContainer.children.length === 0) {
+      pContainer.appendChild(createTextZoneElement(''));
+    }
+  }
+
+  // Scrapes an interleaved text-expression container into Bubble's sequential JSON format.
+  // Only inserts "" between two adjacent ExprZones (the sole repair rule).
+  function packTextExpression(pContainer) {
+    const children = Array.from(pContainer.children).filter(c =>
+      c.classList.contains('cl-tex-literal') || c.classList.contains('cl-tex-expr-zone')
+    );
+
+    if (children.length === 0) {
+      return { type: 'TextExpression', entries: { '0': '' } };
+    }
+
+    const entries = {};
+    let idx = 0;
+    let lastWasExpression = false;
+
+    children.forEach(child => {
+      if (child.classList.contains('cl-tex-literal')) {
+        entries[String(idx++)] = child.textContent || '';
+        lastWasExpression = false;
+      } else if (child.classList.contains('cl-tex-expr-zone')) {
+        // Adjacency repair: insert empty string if two expressions are side-by-side
+        if (lastWasExpression) {
+          entries[String(idx++)] = '';
+        }
+        const packed = packExpression(child);
+        if (packed) {
+          entries[String(idx++)] = packed;
+          lastWasExpression = true;
+        }
+      }
+    });
+
+    // Plain text only → compact form { "0": "text" }
+    const keys = Object.keys(entries);
+    if (keys.length === 1 && typeof entries['0'] === 'string') {
+      return { type: 'TextExpression', entries: { '0': entries['0'] } };
+    }
+
+    return { type: 'TextExpression', entries };
+  }
+
+  // Shows/hides the ⌘/ hint bar at the bottom of the composer popup
+  function showTexHint() {
+    let hint = document.getElementById('cl-tex-hint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'cl-tex-hint';
+      hint.className = 'cl-tex-hint';
+      hint.textContent = 'Press ⌘/ (Mac) or Ctrl+/ (Windows) to insert an expression';
+      const popup = document.querySelector('.cl-advanced-composer-popup');
+      if (popup) popup.appendChild(hint);
+    }
+    hint.classList.add('visible');
+  }
+
+  function hideTexHint() {
+    const hint = document.getElementById('cl-tex-hint');
+    if (hint) hint.classList.remove('visible');
   }
 
   // --- Engine Packer (Phase 6) ---
@@ -353,27 +730,23 @@ window.loadedCodelessLoveScripts ||= {};
                const pkey = group.dataset.propKey;
                const pContainer = group.querySelector('.cl-arg-container');
                if (pkey && pContainer) {
-                  let pPacked = packExpression(pContainer);
-                  
-                  // General Handle: If this is a 'text' type property in the schema, 
-                  // wrap it in a TextExpression object to match Bubble's expected AST.
                   const schemaItem = opDef && opDef.propertiesSchema && opDef.propertiesSchema.find(s => s.key === pkey);
-                  if (pPacked && schemaItem && schemaItem.type === 'text') {
-                     // Bubble expects literal strings inside TextExpression, not our internal AST {type: "String"} nodes.
-                     if (pPacked.type === 'String' && !pPacked.next) {
-                         pPacked = {
-                            type: "TextExpression",
-                            entries: { "0": pPacked.value !== undefined ? String(pPacked.value) : "" }
-                         };
-                     } else {
-                         pPacked = {
-                            type: "TextExpression",
-                            entries: { "0": "", "1": pPacked, "2": "" }
-                         };
-                     }
-                  }
                   
-                  if (pPacked) rawData.properties[pkey] = pPacked;
+                  if (schemaItem && schemaItem.type === 'text' && pContainer.dataset.textExpression === 'true') {
+                     // Use the interleaved TextExpression scraper
+                     rawData.properties[pkey] = packTextExpression(pContainer);
+                  } else {
+                     let pPacked = packExpression(pContainer);
+                     if (pPacked && schemaItem && schemaItem.type === 'text') {
+                        // Fallback: plain string node → wrap
+                        if (pPacked.type === 'String' && !pPacked.next) {
+                           pPacked = { type: 'TextExpression', entries: { '0': pPacked.value !== undefined ? String(pPacked.value) : '' } };
+                        } else {
+                           pPacked = { type: 'TextExpression', entries: { '0': '', '1': pPacked, '2': '' } };
+                        }
+                     }
+                     if (pPacked) rawData.properties[pkey] = pPacked;
+                  }
                }
             });
          }
@@ -840,34 +1213,53 @@ window.loadedCodelessLoveScripts ||= {};
           try { s.remove(); } catch(e) {}
        }
     });
-    
-    // 2. Insert slots around tokens
+
+    // 2. Insert slots around tokens (unless this is a TextExpression container managed by LiteralZones)
+    const isTextExpr = (composer.dataset.textExpression === 'true');
     const tokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
     
+    // Special Case: If it's a TextExpression with exactly one empty literal node, 
+    // it's already a slot. Adding a cl-slot is redundant.
+    const isSingleEmptyLiteral = isTextExpr && 
+                                 composer.children.length === 1 && 
+                                 composer.firstElementChild.classList.contains('cl-tex-literal') && 
+                                 !composer.firstElementChild.textContent.trim();
+
     if (tokens.length === 0) {
-      composer.appendChild(createSlotElement());
+      // For standard containers, if no tokens exist, we need a single slot.
+      // For TextExpression containers, the LiteralZone handles this UNLESS it's the single-empty case.
+      if (!isTextExpr && !isSingleEmptyLiteral) {
+        composer.appendChild(createSlotElement());
+      }
     } else {
-      // Slot at the very beginning
-      composer.insertBefore(createSlotElement(), tokens[0]);
+      // Slot at the very beginning (unless TextExpression engine handled it via literal/virtual-slot)
+      if (!isTextExpr) {
+        composer.insertBefore(createSlotElement(), tokens[0]);
+      }
       
       // Slot after every token
       tokens.forEach((t, i) => {
-        const afterSlot = createSlotElement();
-        composer.insertBefore(afterSlot, t.nextSibling);
+        // In TextExpressions, the "after" slot is usually the next sibling LiteralZone.
+        // We only add a cl-slot here if we're in a standard container.
+        if (!isTextExpr) {
+          const afterSlot = createSlotElement();
+          composer.insertBefore(afterSlot, t.nextSibling);
+        }
         
         // --- Validation Check ---
         t.classList.remove('invalid-syntax');
         const rawData = JSON.parse(t.dataset.bubbleJson || "{}");
         if (rawData.type === 'Message') {
-           const beforeSlot = t.previousElementSibling;
-           if (beforeSlot) beforeSlot.classList.remove('invalid-syntax');
+           // For validation highlighting, we need to find the appropriate 'before' slot/literal
+           const beforeUI = t.previousElementSibling;
+           if (beforeUI) beforeUI.classList.remove('invalid-syntax');
            
            const prevToken = tokens[i - 1]; // Left token in the sequence
            const leftType = getComputedType(prevToken);
            const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
            
            if (!schemaKey || !BUBBLE_SCHEMA[schemaKey] || !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
-               if (beforeSlot) beforeSlot.classList.add('invalid-syntax');
+               if (beforeUI) beforeUI.classList.add('invalid-syntax');
            }
         }
       });
@@ -1023,10 +1415,20 @@ window.loadedCodelessLoveScripts ||= {};
             const pContainer = document.createElement('span');
             pContainer.className = 'cl-arg-container';
             
-            // If the incoming JSON already has this property, unpack it
+            // If the incoming JSON already has this property, render it
             if (tokenObj.properties && tokenObj.properties[p.key]) {
-               const pTokens = unpackExpression(tokenObj.properties[p.key]);
-               pTokens.forEach(pt => pContainer.appendChild(createTokenElement(pt)));
+               const propData = tokenObj.properties[p.key];
+               if (p.type === 'text') {
+                 // Use the interleaved TextExpression renderer
+                 renderTextExpressionContainer(pContainer, propData);
+               } else {
+                 // Non-text properties: render as a standard expression chain
+                 const pTokens = unpackExpression(propData);
+                 pTokens.forEach(pt => pContainer.appendChild(createTokenElement(pt)));
+               }
+            } else if (p.type === 'text') {
+               // Empty text property — render with a single empty literal zone
+               renderTextExpressionContainer(pContainer, null);
             }
             
             group.appendChild(pContainer);

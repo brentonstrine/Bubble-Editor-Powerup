@@ -288,3 +288,97 @@ body {
   padding: 4px 16px !important;
   background: #222 !important;
 }
+
+/* ── TextExpression Engine ──────────────────────────────────── */
+
+.cl-tex-literal {
+  display: inline-block !important;
+  min-width: 14px !important;
+  min-height: 24px !important;
+  padding: 4px 6px !important;
+  margin: 0 !important;
+  border-radius: 4px !important;
+  color: #fff !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  line-height: normal !important;
+  outline: none !important;
+  border: 1px solid transparent !important;
+  transition: all 0.2s ease !important;
+  cursor: text !important;
+}
+
+.cl-tex-literal:empty::before {
+  content: attr(placeholder);
+  color: #666;
+  pointer-events: none;
+}
+
+.cl-tex-literal:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.cl-tex-literal:focus {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: #2196F3 !important;
+  box-shadow: 0 0 5px rgba(33, 150, 243, 0.3) !important;
+}
+
+.cl-tex-expr-zone {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+  margin: 0 2px !important;
+}
+
+/* Virtual slot: appears adjacent to ExprZones without a surrounding LiteralZone */
+.cl-tex-virtual-slot {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 18px !important;
+  height: 24px !important;
+  padding: 0 4px !important;
+  border-radius: 4px !important;
+  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  font-size: 12px !important;
+  cursor: pointer !important;
+  transition: all 0.15s !important;
+  margin: 0 2px !important;
+}
+
+.cl-tex-virtual-slot:hover {
+  background: rgba(33, 150, 243, 0.2) !important;
+  border-color: rgba(33, 150, 243, 0.5) !important;
+  color: #2196F3 !important;
+}
+
+/* ⌘/ hint bar shown at bottom of popup when a LiteralZone is focused */
+.cl-tex-hint {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  padding: 6px 16px !important;
+  background: rgba(33, 150, 243, 0.1) !important;
+  border-top: 1px solid rgba(33, 150, 243, 0.2) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 11px !important;
+  text-align: center !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s !important;
+}
+
+.cl-tex-hint.visible {
+  opacity: 1 !important;
+}
+
+/* "Use text" option in Hybrid Slot dropdown */
+.cl-tex-use-text-option {
+  font-style: italic !important;
+  color: #aed6f1 !important;
+  border-bottom: 1px solid #444 !important;
+}

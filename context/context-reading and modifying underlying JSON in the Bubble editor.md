@@ -164,6 +164,12 @@ window.appquery().app().json.by_path(window.appquery().app().json.child('_index'
 window.appquery().app().json.by_path(window.appquery().app().json.child('_index').child('id_to_path').raw()[document.querySelector(".element.selected > .inner-element").id]).raw()
 ```
 
+**Get the raw JSON of the currently selected element:**
+```javascript
+var elementID = document.querySelector(".element.selected > .inner-element").id;
+window.appquery().app().json.by_path(window.appquery().app().json.child('_index').child('id_to_path').raw()[elementID]).raw()
+```
+
 **Write data directly to the currently selected element:**
 ```javascript
 window.appquery().app().json.by_path(window.appquery().app().json.child('_index').child('id_to_path').raw()[document.querySelector(".element.selected > .inner-element").id]).set(newDataObject, metadata)
