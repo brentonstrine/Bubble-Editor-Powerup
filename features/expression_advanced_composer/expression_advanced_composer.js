@@ -302,6 +302,20 @@ window.loadedCodelessLoveScripts ||= {};
          if (innerPacked) rawData.args = innerPacked;
          else delete rawData.args;
       } else {
+         // Handle propertiesSchema blocks
+         const propGroups = Array.from(tokenEl.querySelectorAll('.cl-prop-group'));
+         if (propGroups.length > 0) {
+            rawData.properties ||= {};
+            propGroups.forEach(group => {
+               const pkey = group.dataset.propKey;
+               const pContainer = group.querySelector('.cl-arg-container');
+               if (pkey && pContainer) {
+                  const pPacked = packExpression(pContainer);
+                  if (pPacked) rawData.properties[pkey] = pPacked;
+               }
+            });
+         }
+
          // Resolve primitive content edits if user typed inline
          if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
             const rawText = Array.from(tokenEl.childNodes)
@@ -354,7 +368,15 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "extract", arg: "text", ret: "text", label: ":extract..." },
       { op: "converted_to_number", arg: "null", ret: "number", label: ":converted to number" },
       { op: "split_by", arg: "text", ret: "List<text>", label: ":split by..." },
-      { op: "find_replace", arg: "text", ret: "text", label: ":find & replace" },
+      { 
+        op: "find_replace", 
+        propertiesSchema: [
+          { key: "find", label: "find", type: "text" },
+          { key: "replace", label: "replace", type: "text" }
+        ],
+        ret: "text", 
+        label: ":find & replace" 
+      },
       { op: "extract_regex", arg: "text", ret: "List<text>", label: ":extract with Regex" },
       { op: "append", arg: "text", ret: "text", label: "append" },
       { op: "defaulting_to", arg: "text", ret: "text", label: "defaulting to" },
@@ -386,7 +408,15 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "or_", arg: "sys.bool", ret: "sys.bool", label: "or" },
       { op: "is_true", arg: "null", ret: "sys.bool", label: "is yes" },
       { op: "is_false", arg: "null", ret: "sys.bool", label: "is no" },
-      { op: "format_boolean", arg: "null", ret: "text", label: ":formatted as text" }
+      { 
+        op: "format_boolean", 
+        propertiesSchema: [
+          { key: "text_for_yes", label: "yes", type: "text" },
+          { key: "text_for_no", label: "no", type: "text" }
+        ],
+        ret: "text", 
+        label: ":formatted as text" 
+      }
     ],
     "List": [
       { op: "count", arg: "null", ret: "number", label: ":count" },
@@ -849,18 +879,58 @@ window.loadedCodelessLoveScripts ||= {};
       argContainer.addEventListener('mousedown', (e) => e.stopPropagation());
       argContainer.addEventListener('click', (e) => e.stopPropagation());
       
-      // Inflate the args into interactive tokens
-      const normalizedJson = normalizeArgToJson(tokenObj.args);
-      const innerTokens = unpackExpression(normalizedJson);
-      innerTokens.forEach(t => argContainer.appendChild(createTokenElement(t)));
-      
+      const unpackedArgs = unpackExpression(tokenObj.args);
+      unpackedArgs.forEach(arg => argContainer.appendChild(createTokenElement(arg)));
       span.appendChild(argContainer);
-      // No syncAndValidate here; it will be called by the parent or unpacker
     } else {
-      span.textContent = renderTokenText(tokenObj);
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = renderTokenText(tokenObj);
+      span.appendChild(labelSpan);
+
+      // Handle propertiesSchema UI
+      let opDef = null;
+      for (const key in BUBBLE_SCHEMA) {
+         const found = BUBBLE_SCHEMA[key].find(o => o.op === tokenObj.name);
+         if (found) { opDef = found; break; }
+      }
+
+      if (opDef && opDef.propertiesSchema) {
+         opDef.propertiesSchema.forEach(p => {
+            const group = document.createElement('span');
+            group.className = 'cl-prop-group';
+            group.dataset.propKey = p.key;
+            
+            // CRITICAL: Stop propagation so clicking inside YES/NO doesn't trigger the parent operator dropdown
+            group.addEventListener('mousedown', (e) => e.stopPropagation());
+            group.addEventListener('click', (e) => e.stopPropagation());
+
+            const pLabel = document.createElement('span');
+            pLabel.className = 'cl-prop-label';
+            pLabel.textContent = p.label + ':';
+            group.appendChild(pLabel);
+
+            const pContainer = document.createElement('span');
+            pContainer.className = 'cl-arg-container';
+            
+            // If the incoming JSON already has this property, unpack it
+            if (tokenObj.properties && tokenObj.properties[p.key]) {
+               const pTokens = unpackExpression(tokenObj.properties[p.key]);
+               pTokens.forEach(pt => pContainer.appendChild(createTokenElement(pt)));
+            }
+            
+            group.appendChild(pContainer);
+            span.appendChild(group);
+            
+            // Render slots (+) inside the property container immediately
+            syncAndValidate(pContainer);
+         });
+      }
     }
     
     span.addEventListener('dragstart', e => {
+      // If drag started inside a nested property group, let that sub-element handle it
+      if (e.target.closest('.cl-prop-group')) return;
+
       e.stopPropagation();
       console.log("💙❤️ Token Dragstart");
       
@@ -922,6 +992,9 @@ window.loadedCodelessLoveScripts ||= {};
     let startX, startY;
     const DRAG_THRESHOLD = 5;
     span.addEventListener('mousedown', (e) => {
+      // If clicking inside a nested property group, don't trigger parent selection/drag
+      if (e.target.closest('.cl-prop-group')) return;
+
       e.stopPropagation();
       
       // INSTANT SELECTION: Don't wait for movement threshold to turn blue
