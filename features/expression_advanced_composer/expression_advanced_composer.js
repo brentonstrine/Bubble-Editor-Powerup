@@ -724,18 +724,22 @@ window.loadedCodelessLoveScripts ||= {};
       
       // Slot after every token
       tokens.forEach((t, i) => {
-        composer.insertBefore(createSlotElement(), t.nextSibling);
+        const afterSlot = createSlotElement();
+        composer.insertBefore(afterSlot, t.nextSibling);
         
         // --- Validation Check ---
         t.classList.remove('invalid-syntax');
         const rawData = JSON.parse(t.dataset.bubbleJson || "{}");
         if (rawData.type === 'Message') {
+           const beforeSlot = t.previousElementSibling;
+           if (beforeSlot) beforeSlot.classList.remove('invalid-syntax');
+           
            const prevToken = tokens[i - 1]; // Left token in the sequence
            const leftType = getComputedType(prevToken);
            const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
            
            if (!schemaKey || !BUBBLE_SCHEMA[schemaKey] || !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
-               t.classList.add('invalid-syntax');
+               if (beforeSlot) beforeSlot.classList.add('invalid-syntax');
            }
         }
       });
