@@ -1478,6 +1478,7 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   function setTokenMode(tokenEl, mode) {
+    console.log(`💙❤️ [setTokenMode] Setting token to mode: ${mode}`);
     tokenEl.dataset.propMode = mode;
     const cv = tokenEl.querySelector(':scope > .cl-prop-view-collapsed');
     const pv = tokenEl.querySelector(':scope > .cl-prop-view-preview');
@@ -1846,11 +1847,18 @@ window.loadedCodelessLoveScripts ||= {};
                 item.dataset.modeId = m.id;
                 if (currentMode === m.id) item.classList.add('active');
                 item.textContent = m.name;
-                item.addEventListener('click', ev => {
-                    console.log("💙❤️ Menu item clicked:", m.name);
+                item.addEventListener('mousedown', ev => {
+                    console.log("💙❤️ [MENU ITEM] mousedown fired for:", m.name);
                     ev.stopPropagation();
+                    ev.preventDefault();
                     setTokenMode(span, m.id);
                     modeMenu.classList.remove('visible');
+                    modeWrap.style.zIndex = '';
+                });
+                // Keep click as backup log
+                item.addEventListener('click', ev => {
+                    console.log("💙❤️ [MENU ITEM] click fired (should be after mousedown) for:", m.name);
+                    ev.stopPropagation();
                 });
                 modeMenu.appendChild(item);
             });
