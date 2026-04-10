@@ -1084,6 +1084,7 @@ window.loadedCodelessLoveScripts ||= {};
         if (!activeDropdown) return;
         const anchorId = activeDropdown.dataset.anchorId;
         const anchor = document.getElementById(anchorId);
+        console.log("💙❤️ Anchor lookup:", anchorId, "→", anchor, "parentNode:", anchor?.parentNode);
         hideDropdown();
         
         if (anchor && item.val) {
@@ -1105,11 +1106,19 @@ window.loadedCodelessLoveScripts ||= {};
               payload = JSON.parse(JSON.stringify(payload));
            }
 
+           // If the item has its own onSelect handler (e.g. from showDropdownForTexLiteral
+           // which wires performTexSplit for cl-tex-literal hybrid slots), use it directly.
+           if (item.onSelect) {
+             item.onSelect();
+             return;
+           }
+
            const tokenEl = createTokenElement(payload);
             const parent = document.getElementById('cl-composer-main-container');
             
             if (anchor.classList.contains('cl-slot')) {
                  const currentParent = anchor.parentNode || parent;
+                 console.log("💙❤️ Inserting at slot, currentParent:", currentParent);
                  if (currentParent) {
                     currentParent.insertBefore(tokenEl, anchor.nextSibling);
                     syncAndValidate(currentParent);
