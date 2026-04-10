@@ -1387,18 +1387,33 @@ window.loadedCodelessLoveScripts ||= {};
     return Object.values(texNode.entries).filter(v => typeof v === 'string').reduce((s, v) => s + v.length, 0);
   }
 
+  // Returns true if a token element is rendered inside an existing Mode 3 (inline) view.
+  // Used to prevent recursive inline-in-inline nesting which breaks layout.
+  function _isNestedInline(tokenEl) {
+    if (!tokenEl) return false;
+    // Walk up from the token's parent (not the token itself) to see if we're
+    // already inside a .cl-prop-view-inline container.
+    return !!tokenEl.parentElement?.closest('.cl-prop-view-inline');
+  }
+
   // Per-operator default mode computed from the token's current JSON content.
-  function defaultTokenMode(opDef, tokenObj) {
+  // tokenEl is the DOM element — needed to detect nested-inline context.
+  function defaultTokenMode(opDef, tokenObj, tokenEl) {
     if (!opDef || !opDef.propertiesSchema) return 'inline';
+
+    // Nested inline prevention: if this token is already rendered inside a
+    // Mode 3 (inline) view, never default to Mode 3 — use Mode 1 instead.
+    const nested = _isNestedInline(tokenEl);
+
     if (tokenObj.type === 'ArbitraryText') {
       const texNode = tokenObj.properties?.arbitrary_text;
       const exprs = _texExprCount(texNode);
       const chars = _texCharCount(texNode);
-      if (exprs === 0 && chars === 0) return 'inline';
+      if (exprs === 0 && chars === 0) return nested ? 'collapsed' : 'inline';
       if (exprs <= 1 && chars <= 20) return 'collapsed';
       return 'preview';
     }
-    return 'inline';
+    return nested ? 'collapsed' : 'inline';
   }
 
   // Short label string for Mode 1 (Collapsed).
@@ -1499,9 +1514,17 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   function cycleTokenMode(tokenEl) {
-    const modes = ['collapsed', 'preview', 'inline', 'popout'];
+    // If this token is nested inside an existing Mode 3 view, skip Mode 3
+    // to prevent recursive inline-in-inline layout breakage.
+    const nested = _isNestedInline(tokenEl);
+    const modes = nested
+      ? ['collapsed', 'preview', 'popout']
+      : ['collapsed', 'preview', 'inline', 'popout'];
     const cur = tokenEl.dataset.propMode || 'inline';
-    setTokenMode(tokenEl, modes[(modes.indexOf(cur) + 1) % modes.length]);
+    const curIdx = modes.indexOf(cur);
+    // If current mode isn't in the allowed list (e.g. 'inline' when nested), start from 0
+    const nextIdx = curIdx >= 0 ? (curIdx + 1) % modes.length : 0;
+    setTokenMode(tokenEl, modes[nextIdx]);
   }
 
   // Mode 4: open a full-width editor panel stacked above the current panel.
@@ -1588,6 +1611,10 @@ window.loadedCodelessLoveScripts ||= {};
     const firstContainer = popupBody.querySelector('.cl-composer-container, .cl-popout-panel');
     if (firstContainer) popupBody.insertBefore(panel, firstContainer);
     else popupBody.appendChild(panel);
+
+    // Trigger entrance animation — class is removed once the animation settles
+    panel.classList.add('cl-popout-panel-entering');
+    setTimeout(() => panel.classList.remove('cl-popout-panel-entering'), 400);
 
     _popoutStack.push({ tokenEl, panelEl: panel, opDef, color });
 
@@ -1789,7 +1816,7 @@ window.loadedCodelessLoveScripts ||= {};
         span.appendChild(inlineView);
 
         // ── Apply default mode ───────────────────────────────────────────────
-        setTokenMode(span, defaultTokenMode(opDef, tokenObj));
+        setTokenMode(span, defaultTokenMode(opDef, tokenObj, span));
       }
     }
     
