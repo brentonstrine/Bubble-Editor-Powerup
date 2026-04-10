@@ -103,6 +103,7 @@ body {
   min-height: 60px !important;
   background: #141414 !important;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  overflow: visible !important; /* Ensure dropdowns aren't clipped */
 }
 
 /* Reusing Slot & Token styles from demo logic */
@@ -434,27 +435,77 @@ body {
 
 /* ── Display Mode Button ───────────────────────────────────────── */
 
+.cl-mode-wrap {
+  position: relative !important;
+  display: inline-flex !important;
+}
+
 .cl-mode-btn {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin-left: 6px !important;
-  padding: 1px 5px !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  margin-left: 8px !important;
+  padding: 2px 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   border-radius: 4px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: rgba(255, 255, 255, 0.5) !important;
-  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 14px !important; /* Larger dots */
+  font-weight: bold !important;
   cursor: pointer !important;
   line-height: 1 !important;
   transition: all 0.15s !important;
   vertical-align: middle !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  z-index: 5 !important;
 }
 
 .cl-mode-btn:hover {
   background: rgba(33, 150, 243, 0.2) !important;
   border-color: rgba(33, 150, 243, 0.5) !important;
   color: #2196F3 !important;
+}
+
+.cl-mode-menu {
+  display: none !important;
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important; /* Switch to left-aligned to avoid cropping if token is on right edge */
+  margin-top: 5px !important;
+  background: #252525 !important;
+  border: 1px solid #444 !important;
+  border-radius: 6px !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+  z-index: 100000 !important; /* Even higher */
+  min-width: 180px !important;
+  flex-direction: column !important;
+  overflow: visible !important; /* Changed from hidden */
+}
+
+.cl-mode-menu.visible {
+  display: flex !important;
+}
+
+.cl-mode-item {
+  padding: 8px 12px !important;
+  font-size: 11px !important;
+  color: #ccc !important;
+  cursor: pointer !important;
+  transition: background 0.15s, color 0.15s !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+.cl-mode-item:hover {
+  background: #333 !important;
+  color: #fff !important;
+}
+
+.cl-mode-item.active {
+  background: rgba(33, 150, 243, 0.1) !important;
+  color: #2196F3 !important;
+  font-weight: 600 !important;
 }
 
 /* ── Collapsed view (Mode 1) ───────────────────────────────────── */
@@ -505,7 +556,6 @@ body {
   padding: 8px 14px !important;
   background: #222 !important;
   border-bottom: 1px solid #333 !important;
-  border-left: 3px solid var(--popout-accent, #fff) !important;
   border-radius: 8px 8px 0 0 !important;
 }
 
@@ -559,4 +609,5 @@ body {
   border-radius: 6px !important;
   padding: 10px !important;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+  overflow: visible !important; /* Crucial for dropdown menus */
 }

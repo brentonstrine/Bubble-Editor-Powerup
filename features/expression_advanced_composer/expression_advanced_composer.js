@@ -1499,10 +1499,14 @@ window.loadedCodelessLoveScripts ||= {};
       applyViews();
     }
     
-    const icons = { collapsed: '🔲', preview: '📄', inline: '✏️', popout: '⤢' };
-    const titles = { collapsed: 'Mode: Collapsed', preview: 'Mode: Preview', inline: 'Mode: Inline Edit', popout: 'Mode: Popout Edit' };
-    const btn = tokenEl.querySelector(':scope > .cl-mode-btn');
-    if (btn) { btn.textContent = icons[mode] || '⚙'; btn.title = titles[mode] || ''; }
+    // Update active class on dropdown items if menu exists
+    const menuItems = tokenEl.querySelectorAll(':scope > .cl-mode-wrap > .cl-mode-menu > .cl-mode-item');
+    if (menuItems.length) {
+      menuItems.forEach(item => {
+        if (item.dataset.modeId === mode) item.classList.add('active');
+        else item.classList.remove('active');
+      });
+    }
 
     // Apply depth-indexed highlight color to editing tokens; none when collapsed/preview
     if (mode === 'inline') {
@@ -1525,20 +1529,6 @@ window.loadedCodelessLoveScripts ||= {};
     else if (_popoutStack.length && _popoutStack[_popoutStack.length - 1].tokenEl === tokenEl) {
       closePopoutEditor(tokenEl);
     }
-  }
-
-  function cycleTokenMode(tokenEl) {
-    // If this token is nested inside an existing Mode 3 view, skip Mode 3
-    // to prevent recursive inline-in-inline layout breakage.
-    const nested = _isNestedInline(tokenEl);
-    const modes = nested
-      ? ['collapsed', 'preview', 'popout']
-      : ['collapsed', 'preview', 'inline', 'popout'];
-    const cur = tokenEl.dataset.propMode || 'inline';
-    const curIdx = modes.indexOf(cur);
-    // If current mode isn't in the allowed list (e.g. 'inline' when nested), start from 0
-    const nextIdx = curIdx >= 0 ? (curIdx + 1) % modes.length : 0;
-    setTokenMode(tokenEl, modes[nextIdx]);
   }
 
   // Mode 4: open a full-width editor panel stacked above the current panel.
@@ -1804,13 +1794,73 @@ window.loadedCodelessLoveScripts ||= {};
       }
 
       if (opDef && opDef.propertiesSchema) {
-        // ── Mode-cycle button ────────────────────────────────────────────────
+        // ── Mode Dropdown Menu ───────────────────────────────────────────────
+        const modeWrap = document.createElement('span');
+        modeWrap.className = 'cl-mode-wrap';
+        
         const modeBtn = document.createElement('button');
         modeBtn.className = 'cl-mode-btn';
-        modeBtn.textContent = '⚙';
-        modeBtn.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
-        modeBtn.addEventListener('click', e => { e.stopPropagation(); cycleTokenMode(span); });
-        span.appendChild(modeBtn);
+        modeBtn.textContent = '⋮';
+        modeBtn.title = 'Change Edit Mode';
+        modeBtn.addEventListener('mousedown', e => { e.stopPropagation(); });
+        
+        const modeMenu = document.createElement('div');
+        modeMenu.className = 'cl-mode-menu';
+        // Prevent clicking inside the menu from bubbling up and selecting the token itself
+        modeMenu.addEventListener('mousedown', e => e.stopPropagation());
+
+        modeBtn.addEventListener('click', e => { 
+            console.log("💙❤️ Three dot menu clicked");
+            e.stopPropagation(); 
+            // Close any other open menus
+            document.querySelectorAll('.cl-mode-menu.visible').forEach(m => {
+                if (m !== modeMenu) {
+                    m.classList.remove('visible');
+                    const otherWrap = m.closest('.cl-mode-wrap');
+                    if (otherWrap) otherWrap.style.zIndex = '';
+                }
+            });
+            
+            // Toggle this menu
+            const isVisible = modeMenu.classList.contains('visible');
+            if (isVisible) {
+                modeMenu.classList.remove('visible');
+                modeWrap.style.zIndex = '';
+                return;
+            }
+
+            modeWrap.style.zIndex = '10000';
+
+            // Rebuild menu contents dynamically based on nesting context
+            modeMenu.innerHTML = '';
+            const nested = _isNestedInline(span);
+            const modes = nested
+                ? [{id: 'collapsed', name: 'Collapsed'}, {id: 'preview', name: 'Read Only'}, {id: 'popout', name: 'Edit in new box above'}]
+                : [{id: 'collapsed', name: 'Collapsed'}, {id: 'preview', name: 'Read Only'}, {id: 'inline', name: 'Inline Edit'}, {id: 'popout', name: 'Edit in new box above'}];
+
+            const currentMode = span.dataset.propMode || 'inline';
+            
+            modes.forEach(m => {
+                const item = document.createElement('div');
+                item.className = 'cl-mode-item';
+                item.dataset.modeId = m.id;
+                if (currentMode === m.id) item.classList.add('active');
+                item.textContent = m.name;
+                item.addEventListener('click', ev => {
+                    console.log("💙❤️ Menu item clicked:", m.name);
+                    ev.stopPropagation();
+                    setTokenMode(span, m.id);
+                    modeMenu.classList.remove('visible');
+                });
+                modeMenu.appendChild(item);
+            });
+            
+            modeMenu.classList.add('visible');
+        });
+
+        modeWrap.appendChild(modeBtn);
+        modeWrap.appendChild(modeMenu);
+        span.appendChild(modeWrap);
 
         // ── View: Collapsed (Mode 1) ─────────────────────────────────────────
         const collapsedView = document.createElement('span');
@@ -1953,6 +2003,7 @@ window.loadedCodelessLoveScripts ||= {};
       
       // INSTANT SELECTION: Don't wait for movement threshold to turn blue
       if (!e.shiftKey && !span.classList.contains('selected')) {
+         console.log("💙❤️ Token focus/active state programmatically given");
          clearSelection();
          span.classList.add('selected');
          shiftAnchorElement = span;
@@ -2132,6 +2183,11 @@ window.loadedCodelessLoveScripts ||= {};
     if (event.data.type === 'CL_ADVANCED_COMPOSER_DATA_READY') {
       openPopup(event.data.expressionJson);
     }
+  });
+
+  // Global listener to close mode menus when clicking elsewhere
+  window.addEventListener('click', () => {
+    document.querySelectorAll('.cl-mode-menu.visible').forEach(m => m.classList.remove('visible'));
   });
 
 })();//👈👈 don't delete this, and don't put anything outside of this!!
