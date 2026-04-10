@@ -1482,9 +1482,23 @@ window.loadedCodelessLoveScripts ||= {};
     const cv = tokenEl.querySelector(':scope > .cl-prop-view-collapsed');
     const pv = tokenEl.querySelector(':scope > .cl-prop-view-preview');
     const iv = tokenEl.querySelector(':scope > .cl-prop-view-inline');
-    if (cv) cv.style.display = (mode === 'collapsed') ? '' : 'none';
-    if (pv) pv.style.display = (mode === 'preview')   ? '' : 'none';
-    if (iv) iv.style.display = (mode === 'inline')     ? '' : 'none';
+    
+    if (tokenEl._viewTimeout) clearTimeout(tokenEl._viewTimeout);
+
+    const applyViews = () => {
+      if (cv) cv.style.display = (mode === 'collapsed') ? '' : 'none';
+      if (pv) pv.style.display = (mode === 'preview')   ? '' : 'none';
+      if (iv) iv.style.display = (mode === 'inline')     ? '' : 'none';
+    };
+
+    if (mode === 'popout') {
+      // Delay collapsing the view until the new panel opening animation finishes,
+      // so the jump happens when the element is pushed down out of frame.
+      tokenEl._viewTimeout = setTimeout(applyViews, 550);
+    } else {
+      applyViews();
+    }
+    
     const icons = { collapsed: '🔲', preview: '📄', inline: '✏️', popout: '⤢' };
     const titles = { collapsed: 'Mode: Collapsed', preview: 'Mode: Preview', inline: 'Mode: Inline Edit', popout: 'Mode: Popout Edit' };
     const btn = tokenEl.querySelector(':scope > .cl-mode-btn');
@@ -1609,12 +1623,47 @@ window.loadedCodelessLoveScripts ||= {};
 
     // Stack above the existing composer/panels (deepest level = topmost)
     const firstContainer = popupBody.querySelector('.cl-composer-container, .cl-popout-panel');
-    if (firstContainer) popupBody.insertBefore(panel, firstContainer);
-    else popupBody.appendChild(panel);
 
-    // Trigger entrance animation — class is removed once the animation settles
-    panel.classList.add('cl-popout-panel-entering');
-    setTimeout(() => panel.classList.remove('cl-popout-panel-entering'), 400);
+    // ── 2-Step Entrance Animation ──────────────────────────────────────────
+    // Step 1: Create an invisible wrapper that starts at 0 height.
+    const wrapper = document.createElement('div');
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.height = '0px';
+    wrapper.style.transition = 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+    wrapper.appendChild(panel);
+
+    // Prepare the panel to slide up and fade in
+    panel.style.visibility = 'hidden'; // hide so it doesn't flash
+    panel.style.transform = 'translateY(30px)';
+    panel.style.opacity = '0';
+    panel.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease-out';
+
+    if (firstContainer) popupBody.insertBefore(wrapper, firstContainer);
+    else popupBody.appendChild(wrapper);
+
+    // Measure the necessary height (including margin-bottom of 12px set in CSS)
+    const targetHeight = panel.offsetHeight + 12;
+
+    requestAnimationFrame(() => {
+      // Phase 1: slide everything down by expanding the wrapper's height
+      wrapper.style.height = targetHeight + 'px';
+
+      // Phase 2: slide the panel up into the newly created space
+      // We start this slightly before Phase 1 finishes (e.g. 300ms) to feel connected.
+      setTimeout(() => {
+        panel.style.visibility = 'visible';
+        panel.style.transform = 'translateY(0)';
+        panel.style.opacity = '1';
+
+        // Cleanup inline styles after animation is fully complete
+        setTimeout(() => {
+          wrapper.replaceWith(panel); // Un-wrap
+          panel.style.transition = '';
+          panel.style.transform = '';
+          panel.style.opacity = '';
+        }, 600);
+      }, 350);
+    });
 
     _popoutStack.push({ tokenEl, panelEl: panel, opDef, color });
 

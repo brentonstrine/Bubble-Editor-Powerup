@@ -486,23 +486,6 @@ body {
   flex-wrap: wrap !important;
 }
 
-@keyframes cl-popout-enter {
-  0% {
-    opacity: 0;
-    transform: translateY(-16px) scaleY(0.92);
-    max-height: 0;
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(2px) scaleY(1.01);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-    max-height: 2000px;
-  }
-}
-
 /* ── Mode 4 Popout Panel ───────────────────────────────────────── */
 .cl-popout-panel {
   background: #181818 !important;
@@ -514,9 +497,6 @@ body {
   transform-origin: top center !important;
 }
 
-.cl-popout-panel.cl-popout-panel-entering {
-  animation: cl-popout-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
-}
 
 .cl-popout-header {
   display: flex !important;
