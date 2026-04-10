@@ -1459,6 +1459,8 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   // Mode 4: open a full-width editor panel stacked above the current panel.
+  // Content is rendered FRESH from JSON using the full interactive pipeline so all
+  // event listeners (slots, dropdowns, drag) are correctly attached.
   function openPopoutEditor(tokenEl) {
     const popupBody = document.querySelector('.cl-popup-body');
     if (!popupBody) return;
@@ -1474,7 +1476,10 @@ window.loadedCodelessLoveScripts ||= {};
 
     const panel = document.createElement('div');
     panel.className = 'cl-popout-panel';
+    // Match the panel border to the token's editing highlight (white)
+    panel.style.setProperty('border-color', '#fff', 'important');
 
+    // ── Header ──────────────────────────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'cl-popout-header';
     const label = opDef?.label || renderTokenText(rawData);
@@ -1489,6 +1494,10 @@ window.loadedCodelessLoveScripts ||= {};
     header.appendChild(closeBtn);
     panel.appendChild(header);
 
+    // ── Property editors — rendered fresh from JSON ──────────────────────
+    // Store containers on the panel so closePopoutEditor can pack them.
+    panel._propContainers = [];
+
     if (opDef?.propertiesSchema) {
       opDef.propertiesSchema.forEach(p => {
         const propWrap = document.createElement('div');
@@ -1498,46 +1507,115 @@ window.loadedCodelessLoveScripts ||= {};
         propLabel.textContent = p.label;
         propWrap.appendChild(propLabel);
 
-        // Mirror container: writes back to hidden inline node via MutationObserver
-        const mirrorContainer = document.createElement('span');
-        mirrorContainer.className = 'cl-arg-container cl-popout-editor-container';
-        if (p.type === 'text') mirrorContainer.classList.add('cl-tex-property-container');
+        // Create a fresh, fully-interactive editor container.
+        const editorContainer = document.createElement('span');
+        editorContainer.className = 'cl-arg-container cl-popout-editor-container';
+        editorContainer.dataset.propKey = p.key;
+        editorContainer.dataset.propType = p.type;
 
-        const hiddenGroup = tokenEl.querySelector(`.cl-prop-view-inline .cl-prop-group[data-prop-key="${p.key}"]`);
-        const hiddenPContainer = hiddenGroup?.querySelector('.cl-arg-container');
-        if (hiddenPContainer) {
-          mirrorContainer.innerHTML = hiddenPContainer.innerHTML;
-          if (hiddenPContainer.dataset.textExpression) mirrorContainer.dataset.textExpression = 'true';
-          const obs = new MutationObserver(() => {
-            hiddenPContainer.innerHTML = mirrorContainer.innerHTML;
-            if (mirrorContainer.dataset.textExpression) hiddenPContainer.dataset.textExpression = 'true';
-            setTimeout(triggerRepack, 0);
-          });
-          obs.observe(mirrorContainer, { childList: true, subtree: true, characterData: true });
-          panel._observers = panel._observers || [];
-          panel._observers.push(obs);
-        } else if (p.type === 'text') {
-          renderTextExpressionContainer(mirrorContainer, rawData.properties?.[p.key] || null);
+        if (p.type === 'text') {
+          editorContainer.classList.add('cl-tex-property-container');
+          // Render from JSON via the TextExpression pipeline — full interactive
+          renderTextExpressionContainer(editorContainer, rawData.properties?.[p.key] || null);
+        } else {
+          // Non-text: render as standard expression chain
+          const propData = rawData.properties?.[p.key];
+          if (propData) {
+            const pts = unpackExpression(propData);
+            pts.forEach(pt => editorContainer.appendChild(createTokenElement(pt)));
+          }
+          syncAndValidate(editorContainer);
         }
 
-        propWrap.appendChild(mirrorContainer);
+        propWrap.appendChild(editorContainer);
         panel.appendChild(propWrap);
+        panel._propContainers.push({ key: p.key, type: p.type, el: editorContainer });
       });
     }
 
+    // Stack above the existing composer/panels (deepest level = topmost)
     const firstContainer = popupBody.querySelector('.cl-composer-container, .cl-popout-panel');
     if (firstContainer) popupBody.insertBefore(panel, firstContainer);
     else popupBody.appendChild(panel);
 
-    _popoutStack.push({ tokenEl, panelEl: panel });
+    _popoutStack.push({ tokenEl, panelEl: panel, opDef });
   }
 
+  // Closes a popout editor, packs the popout content back to JSON,
+  // then re-renders the hidden inline view from the updated JSON.
   function closePopoutEditor(tokenEl) {
     const idx = _popoutStack.findIndex(s => s.tokenEl === tokenEl);
     if (idx === -1) return;
     const removed = _popoutStack.splice(idx);
-    removed.forEach(({ panelEl }) => {
-      if (panelEl._observers) panelEl._observers.forEach(o => o.disconnect());
+
+    removed.forEach(({ panelEl, opDef }) => {
+      // ── Pack popout content back to the token's JSON ─────────────────
+      if (panelEl._propContainers && panelEl._propContainers.length > 0) {
+        let rawData = JSON.parse(tokenEl.dataset.bubbleJson || '{}');
+        rawData.properties = rawData.properties || {};
+
+        panelEl._propContainers.forEach(({ key, type, el }) => {
+          if (type === 'text') {
+            rawData.properties[key] = packTextExpression(el);
+          } else {
+            const packed = packExpression(el);
+            if (packed) rawData.properties[key] = packed;
+          }
+        });
+
+        // Persist updated JSON on the token element
+        tokenEl.dataset.bubbleJson = JSON.stringify(rawData);
+
+        // ── Re-render the hidden inline view from the fresh JSON ────────
+        const inlineView = tokenEl.querySelector(':scope > .cl-prop-view-inline');
+        if (inlineView && opDef?.propertiesSchema) {
+          inlineView.innerHTML = '';
+          opDef.propertiesSchema.forEach(p => {
+            const group = document.createElement('span');
+            group.className = 'cl-prop-group';
+            group.dataset.propKey = p.key;
+            group.addEventListener('mousedown', e => e.stopPropagation());
+            group.addEventListener('click', e => e.stopPropagation());
+
+            const pLabel = document.createElement('span');
+            pLabel.className = 'cl-prop-label';
+            pLabel.textContent = p.label + ':';
+            group.appendChild(pLabel);
+
+            const pContainer = document.createElement('span');
+            pContainer.className = 'cl-arg-container';
+            if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
+
+            const propData = rawData.properties[p.key];
+            if (propData) {
+              if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
+              else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
+            } else if (p.type === 'text') {
+              renderTextExpressionContainer(pContainer, null);
+            }
+
+            if (p.type === 'text') group.classList.add('cl-tex-prop-group');
+            group.appendChild(pContainer);
+            inlineView.appendChild(group);
+            syncAndValidate(pContainer);
+          });
+        }
+
+        // Also update collapsed/preview views
+        const collapsedView = tokenEl.querySelector(':scope > .cl-prop-view-collapsed');
+        const previewView   = tokenEl.querySelector(':scope > .cl-prop-view-preview');
+        if (collapsedView && opDef) collapsedView.textContent = renderCollapsedSummary(opDef, rawData);
+        if (previewView   && opDef) {
+          const previewText = opDef.propertiesSchema
+            .filter(p => p.type === 'text')
+            .map(p => renderPreviewText(rawData.properties?.[p.key]))
+            .join(' ');
+          previewView.textContent = previewText || '(empty)';
+        }
+
+        triggerRepack();
+      }
+
       panelEl.remove();
     });
   }
