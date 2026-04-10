@@ -1,3 +1,11 @@
+:root {
+  --composer-container-padding: 16px;
+  --slot-width: 14px;
+  --slot-gap: 4px;
+  --mini-slot-width: calc(var(--slot-width) - 2px);
+  --mini-slot-gap: calc((var(--composer-container-padding) - var(--mini-slot-width)) / 2);
+}
+
 /* Advanced Expression Composer Trigger Button */
 💙❤️ .codelesslove,
 body {
@@ -105,7 +113,7 @@ body {
   align-items: center;
   gap: 5px 0px;
   /* 5px vertical (row), 0px horizontal (handled by slot margins) */
-  padding: 16px;
+  padding: var(--composer-container-padding);
   border: 1px solid #333;
   border-radius: 8px;
   min-height: 60px;
@@ -115,11 +123,33 @@ body {
   /* Ensure dropdowns aren't clipped */
 }
 
+/* ── Layout Override: TextExpression Engine (Columnar) ────────── */
+.cl-composer-container[data-text-expression="true"],
+.cl-tex-property-container[data-text-expression="true"] {
+  align-items: flex-start;
+  flex-direction: column;
+
+
+  .cl-tex-expr-zone {
+    margin-left: 0;
+  }
+
+  .cl-slot:first-child {
+    /* The padding is 16px wide. We want 
+    [2px gap] + [12px slot width] + [2px gap] = 16px
+    */
+    margin-left: calc((var(--composer-container-padding) * -1) + var(--mini-slot-gap));
+    margin-right: var(--mini-slot-gap);
+    width: var(--mini-slot-width);
+    min-width: var(--mini-slot-width);
+  }
+}
+
 /* Reusing Slot & Token styles from demo logic */
 .cl-slot {
   display: inline-block;
-  width: 14px;
-  min-width: 14px;
+  width: var(--slot-width);
+  min-width: var(--slot-width);
   height: 32px;
   vertical-align: middle;
   outline: none;
@@ -141,8 +171,6 @@ body {
 
 .cl-slot:first-child {
   margin-left: 0;
-  margin-left: -17px;
-  margin-right: 1px;
 }
 
 .cl-slot:hover {
@@ -450,7 +478,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: var(--slot-gap);
   margin-left: 12px;
   border-left: 2px solid #333;
   padding-left: 8px;
@@ -462,7 +490,7 @@ body {
   flex-wrap: wrap;
   align-items: flex-start;
   align-content: flex-start;
-  gap: 4px;
+  gap: var(--slot-gap);
   max-width: 350px;
   max-height: 350px;
   overflow-y: auto;
