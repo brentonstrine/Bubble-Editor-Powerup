@@ -12,16 +12,22 @@ body {
 
 .cl-advanced-composer-overlay {
   position: fixed !important;
+  /* !important required: prevents Bubble's root layout from breaking the full-screen overlay */
   top: 0 !important;
+  /* !important required: prevents Bubble's root layout from breaking the full-screen overlay */
   left: 0 !important;
+  /* !important required: prevents Bubble's root layout from breaking the full-screen overlay */
   width: 100vw !important;
+  /* !important required: prevents Bubble's root layout from breaking the full-screen overlay */
   height: 100vh !important;
-  background: rgba(0, 0, 0, 0.4) !important;
-  backdrop-filter: blur(4px) !important;
+  /* !important required: prevents Bubble's root layout from breaking the full-screen overlay */
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
   z-index: 1000000 !important;
+  /* !important required: prevents Bubble's root layout from breaking the full-screen overlay */
   display: none;
-  align-items: center !important;
-  justify-content: center !important;
+  align-items: center;
+  justify-content: center;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -31,17 +37,17 @@ body {
 }
 
 .cl-advanced-composer-popup {
-  position: relative !important;
-  background: #1e1e1e !important;
-  border: 1px solid #333 !important;
-  border-radius: 12px !important;
-  width: 80% !important;
-  max-width: 900px !important;
-  max-height: 80vh !important;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
+  position: relative;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 12px;
+  width: 80%;
+  max-width: 900px;
+  max-height: 80vh;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   transform: translateY(20px);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -51,250 +57,284 @@ body {
 }
 
 .cl-popup-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 12px 16px !important;
-  background: #252525 !important;
-  border-bottom: 1px solid #333 !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #252525;
+  border-bottom: 1px solid #333;
 }
 
 .cl-popup-title {
-  color: #fff !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cl-close-btn {
-  width: 28px !important;
-  height: 28px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 6px !important;
-  cursor: pointer !important;
-  color: #888 !important;
-  transition: all 0.2s !important;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #888;
+  transition: all 0.2s;
 }
 
 .cl-close-btn:hover {
   background: #333 !important;
+  /* !important required: overrides base class properties during state change */
   color: #fff !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-popup-body {
-  padding: 24px !important;
-  background: #1a1a1a !important;
-  overflow-y: auto !important;
+  padding: 24px;
+  background: #1a1a1a;
+  overflow-y: auto;
 }
 
 .cl-composer-container {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 5px 0px !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 0px;
   /* 5px vertical (row), 0px horizontal (handled by slot margins) */
-  padding: 16px !important;
-  border: 1px solid #333 !important;
-  border-radius: 8px !important;
-  min-height: 60px !important;
-  background: #141414 !important;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4) !important;
-  overflow: visible !important;
+  padding: 16px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  min-height: 60px;
+  background: #141414;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: visible;
   /* Ensure dropdowns aren't clipped */
 }
 
 /* Reusing Slot & Token styles from demo logic */
 .cl-slot {
-  display: inline-block !important;
-  width: 14px !important;
-  min-width: 14px !important;
-  height: 32px !important;
-  vertical-align: middle !important;
-  outline: none !important;
-  border: 1px solid transparent !important;
-  background: rgba(255, 255, 255, 0.02) !important;
-  cursor: pointer !important;
-  border-radius: 4px !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
-  transition: width 0.15s, background 0.15s, border-color 0.15s !important;
-  overflow: hidden !important;
-  margin: 0 4px !important;
-  text-align: center !important;
-  line-height: 30px !important;
-  color: rgba(255, 255, 255, 0.3) !important;
-  font-size: 14px !important;
-  user-select: none !important;
+  display: inline-block;
+  width: 14px;
+  min-width: 14px;
+  height: 32px;
+  vertical-align: middle;
+  outline: none;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+  box-sizing: border-box;
+  transition: width 0.15s, background 0.15s, border-color 0.15s;
+  overflow: hidden;
+  margin: 0 4px;
+  text-align: center;
+  line-height: 30px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+  user-select: none;
 }
 
 .cl-slot:first-child {
-  margin-left: 0 !important;
+  margin-left: 0;
+  margin-left: -17px;
+  margin-right: 1px;
 }
 
 .cl-slot:hover {
   background: rgba(33, 150, 243, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
   color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
   border-color: rgba(33, 150, 243, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-slot:focus,
 .cl-slot.selected,
 .cl-slot.drop-target,
 .cl-slot:last-child {
-  width: 24px !important;
-  min-width: 24px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: rgba(255, 255, 255, 0.8) !important;
-  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
+  width: 24px;
+  min-width: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
 }
 
 .cl-slot:last-child:hover {
   background: rgba(33, 150, 243, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
   border: 1px solid rgba(33, 150, 243, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
   color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-slot:focus {
   border: 1px solid #4caf50 !important;
+  /* !important required: overrides base class properties during state change */
   background: rgba(76, 175, 80, 0.1) !important;
+  /* !important required: overrides base class properties during state change */
   border-color: #fff !important;
+  /* !important required: overrides base class properties during state change */
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-slot.drop-target {
   border: 1px dashed #ffeb3b !important;
+  /* !important required: overrides base class properties during state change */
   background: rgba(255, 235, 59, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-token {
-  display: inline-flex !important;
-  align-items: center !important;
-  padding: 4px 10px !important;
-  height: auto !important;
-  background: #2c2c2c !important;
-  border: 1px solid #444 !important;
-  border-radius: 6px !important;
-  color: #e0e0e0 !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
-  user-select: none !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  margin: 0 !important;
-  outline: none !important;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  height: auto;
+  background: #2c2c2c;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 0;
+  outline: none;
 }
 
 .cl-token.just-dropped {
   background: rgba(255, 235, 59, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
   border-color: #ffeb3b !important;
+  /* !important required: overrides base class properties during state change */
   box-shadow: 0 0 15px rgba(255, 235, 59, 0.5) !important;
+  /* !important required: overrides base class properties during state change */
   transform: scale(1.05);
 }
 
 .cl-token:focus {
   border-color: #fff !important;
+  /* !important required: overrides base class properties during state change */
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-token:hover {
   border-color: #666 !important;
+  /* !important required: overrides base class properties during state change */
   background: #363636 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-token.selected {
   border-color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
   box-shadow: 0 0 12px rgba(33, 150, 243, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
   background: rgba(33, 150, 243, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 
 .cl-slot.invalid-syntax {
   border-color: #f44336 !important;
+  /* !important required: overrides base class properties during state change */
   background: rgba(244, 67, 54, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
   color: #ffcdd2 !important;
+  /* !important required: overrides base class properties during state change */
   box-shadow: 0 0 8px rgba(244, 67, 54, 0.4) !important;
+  /* !important required: overrides base class properties during state change */
   width: 20px !important;
+  /* !important required: overrides base class properties during state change */
   z-index: 10 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-token.dragging {
   opacity: 0.3 !important;
+  /* !important required: overrides base class properties during state change */
   transform: scale(0.95) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-token-label {
-  margin-right: 8px !important;
-  pointer-events: none !important;
+  margin-right: 8px;
+  pointer-events: none;
 }
 
 .cl-arg-container {
-  display: inline-flex !important;
-  align-items: center !important;
-  background: rgba(0, 0, 0, 0.2) !important;
-  border-radius: 4px !important;
-  padding: 2px 4px !important;
-  margin-left: 4px !important;
-  border: 1px inset rgba(255, 255, 255, 0.1) !important;
-  min-width: 20px !important;
-  min-height: 20px !important;
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin-left: 4px;
+  border: 1px inset rgba(255, 255, 255, 0.1);
+  min-width: 20px;
+  min-height: 20px;
 }
 
 .cl-prop-group {
-  display: inline-flex !important;
-  align-items: center !important;
-  margin-left: 8px !important;
-  padding: 2px 4px !important;
-  border-radius: 4px !important;
-  background: rgba(255, 255, 255, 0.03) !important;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .cl-prop-label {
-  font-size: 10px !important;
-  color: #888 !important;
-  margin-right: 4px !important;
-  text-transform: uppercase !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.5px !important;
+  font-size: 10px;
+  color: #888;
+  margin-right: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 /* ── Dropdown Placeholder ──────────────────────────────────── */
 
 .cl-dropdown {
-  position: absolute !important;
-  background: #2c2c2c !important;
-  border: 1px solid #555 !important;
-  border-radius: 4px !important;
-  margin-top: 2px !important;
-  z-index: 1000001 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
-  max-height: 300px !important;
-  overflow-y: auto !important;
-  min-width: 150px !important;
-  min-height: 48px !important;
+  position: absolute;
+  background: #2c2c2c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  margin-top: 2px;
+  z-index: 1000001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 150px;
+  min-height: 48px;
 }
 
 .cl-dropdown .cl-option {
-  padding: 8px 16px !important;
-  cursor: pointer !important;
-  color: #eee !important;
-  font-size: 12px !important;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: #eee;
+  font-size: 12px;
 }
 
 .cl-dropdown .cl-option:hover,
 .cl-dropdown .cl-option.highlighted-option {
-  background: #444 !important;
+  background: #444;
 }
 
 .cl-dropdown .cl-header {
-  font-size: 10px !important;
-  color: #888 !important;
-  text-transform: uppercase !important;
-  padding: 4px 16px !important;
-  background: #222 !important;
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  padding: 4px 16px;
+  background: #222;
 }
 
 /* ── TextExpression Engine ──────────────────────────────────── */
@@ -327,325 +367,344 @@ body {
 
 .cl-tex-literal:hover {
   background: rgba(255, 255, 255, 0.05) !important;
+  /* !important required: overrides base class properties during state change */
   border-color: rgba(255, 255, 255, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-tex-literal:focus {
   background: rgba(255, 255, 255, 0.1) !important;
+  /* !important required: overrides base class properties during state change */
   border-color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
   box-shadow: 0 0 5px rgba(33, 150, 243, 0.3) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-tex-expr-zone {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 0 !important;
-  margin: 0 2px !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+  margin: 0 2px;
 }
 
 /* Virtual slot: appears adjacent to ExprZones without a surrounding LiteralZone */
 .cl-tex-virtual-slot {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 18px !important;
-  height: 24px !important;
-  padding: 0 4px !important;
-  border-radius: 4px !important;
-  border: 1px dashed rgba(255, 255, 255, 0.2) !important;
-  color: rgba(255, 255, 255, 0.3) !important;
-  font-size: 12px !important;
-  cursor: pointer !important;
-  transition: all 0.15s !important;
-  margin: 0 2px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin: 0 2px;
 }
 
 .cl-tex-virtual-slot:hover {
   background: rgba(33, 150, 243, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
   border-color: rgba(33, 150, 243, 0.5) !important;
+  /* !important required: overrides base class properties during state change */
   color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 /* ⌘/ hint bar shown at bottom of popup when a LiteralZone is focused */
 .cl-tex-hint {
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  padding: 6px 16px !important;
-  background: rgba(33, 150, 243, 0.1) !important;
-  border-top: 1px solid rgba(33, 150, 243, 0.2) !important;
-  color: rgba(255, 255, 255, 0.5) !important;
-  font-size: 11px !important;
-  text-align: center !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: opacity 0.2s !important;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 6px 16px;
+  background: rgba(33, 150, 243, 0.1);
+  border-top: 1px solid rgba(33, 150, 243, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
 }
 
 .cl-tex-hint.visible {
   opacity: 1 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 /* "Use text" option in Hybrid Slot dropdown */
 .cl-tex-use-text-option {
-  font-style: italic !important;
-  color: #aed6f1 !important;
-  border-bottom: 1px solid #444 !important;
+  font-style: italic;
+  color: #aed6f1;
+  border-bottom: 1px solid #444;
 }
 
 /* ── Specific TextExpression Property UI (Arbitrary Text Editor) ──────────── */
 
 .cl-tex-prop-group {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 4px !important;
-  margin-left: 12px !important;
-  border-left: 2px solid #333 !important;
-  padding-left: 8px !important;
-  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  margin-left: 12px;
+  border-left: 2px solid #333;
+  padding-left: 8px;
+  background: transparent;
 }
 
 .cl-tex-property-container {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: flex-start !important;
-  align-content: flex-start !important;
-  gap: 4px !important;
-  max-width: 350px !important;
-  max-height: 350px !important;
-  overflow-y: auto !important;
-  background: #0d0d0d !important;
-  border: 1px solid #333 !important;
-  border-radius: 6px !important;
-  padding: 10px !important;
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 4px;
+  max-width: 350px;
+  max-height: 350px;
+  overflow-y: auto;
+  background: #0d0d0d;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .cl-tex-property-container .cl-tex-literal {
-  flex: 0 1 auto !important;
+  flex: 0 1 auto;
   /* Allow it to naturally wrap and take up space */
-  max-width: 100% !important;
-  word-break: break-word !important;
-  white-space: pre-wrap !important;
+  max-width: 100%;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .cl-tex-property-container .cl-tex-expr-zone {
-  display: inline-flex !important;
-  vertical-align: middle !important;
-  margin: 0 !important;
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 0;
 }
 
 /* ── Display Mode Button ───────────────────────────────────────── */
 
 .cl-mode-wrap {
-  position: relative !important;
-  display: inline-flex !important;
+  position: relative;
+  display: inline-flex;
 }
 
 .cl-mode-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin-left: 8px !important;
-  padding: 2px 8px !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 4px !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: rgba(255, 255, 255, 0.7) !important;
-  font-size: 14px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
   /* Larger dots */
-  font-weight: bold !important;
-  cursor: pointer !important;
-  line-height: 1 !important;
-  transition: all 0.15s !important;
-  vertical-align: middle !important;
-  min-width: 24px !important;
-  min-height: 24px !important;
-  z-index: 5 !important;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s;
+  vertical-align: middle;
+  min-width: 24px;
+  min-height: 24px;
+  z-index: 5;
 }
 
 .cl-mode-btn:hover {
   background: rgba(33, 150, 243, 0.2) !important;
+  /* !important required: overrides base class properties during state change */
   border-color: rgba(33, 150, 243, 0.5) !important;
+  /* !important required: overrides base class properties during state change */
   color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-mode-menu {
-  display: none !important;
-  position: absolute !important;
-  top: 100% !important;
-  left: 0 !important;
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
   /* Switch to left-aligned to avoid cropping if token is on right edge */
-  margin-top: 5px !important;
-  background: #252525 !important;
-  border: 1px solid #444 !important;
-  border-radius: 6px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
-  z-index: 100000 !important;
+  margin-top: 5px;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  z-index: 100000;
   /* Even higher */
-  min-width: 180px !important;
-  flex-direction: column !important;
-  overflow: visible !important;
+  min-width: 180px;
+  flex-direction: column;
+  overflow: visible;
   /* Changed from hidden */
 }
 
 .cl-mode-menu.visible {
   display: flex !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 /* ── Mode 2 Preview Styling ────────────────────────────────────── */
 .cl-prop-view-preview {
   display: inline-flex;
-  align-items: center !important;
-  font-family: inherit !important;
-  white-space: nowrap !important;
-  color: #aaa !important;
+  align-items: center;
+  font-family: inherit;
+  white-space: nowrap;
+  color: #aaa;
   height: stretch;
-  font-size: 12px !important;
-  margin-left: 6px !important;
-  max-width: 150px !important;
-  overflow: hidden !important;
-  overflow-x: auto !important;
-  white-space: nowrap !important;
-  vertical-align: middle !important;
+  font-size: 12px;
+  margin-left: 6px;
+  max-width: 150px;
+  overflow: hidden;
+  overflow-x: auto;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .cl-preview-op {
-  color: #fff !important;
-  font-weight: 600 !important;
-  margin-right: 4px !important;
+  color: #fff;
+  font-weight: 600;
+  margin-right: 4px;
 }
 
 .cl-preview-lit {
-  color: #4caf50 !important;
+  color: #4caf50;
   /* Green for literal strings */
-  font-style: italic !important;
+  font-style: italic;
 }
 
 .cl-preview-mod {
-  color: #2196F3 !important;
+  color: #2196F3;
   /* Blue for modifiers (:uppercase) */
-  margin-left: 2px !important;
+  margin-left: 2px;
 }
 
 .cl-preview-wrap {
-  color: #888 !important;
-  font-size: 0.9em !important;
+  color: #888;
+  font-size: 0.9em;
 }
 
 .cl-mode-item {
-  padding: 8px 12px !important;
-  font-size: 11px !important;
-  color: #ccc !important;
-  cursor: pointer !important;
-  transition: background 0.15s, color 0.15s !important;
-  text-align: left !important;
-  white-space: nowrap !important;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #ccc;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .cl-mode-item:hover {
   background: #333 !important;
+  /* !important required: overrides base class properties during state change */
   color: #fff !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-mode-item.active {
   background: rgba(33, 150, 243, 0.1) !important;
+  /* !important required: overrides base class properties during state change */
   color: #2196F3 !important;
+  /* !important required: overrides base class properties during state change */
   font-weight: 600 !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 /* ── Collapsed view (Mode 1) ───────────────────────────────────── */
 .cl-prop-view-collapsed {
   display: inline;
-  font-size: 11px !important;
-  color: #aaa !important;
-  margin-left: 6px !important;
-  font-style: italic !important;
+  font-size: 11px;
+  color: #aaa;
+  margin-left: 6px;
+  font-style: italic;
 }
 
 
 /* ── Inline view (Mode 3) wrapper ──────────────────────────────── */
 .cl-prop-view-inline {
   display: inline-flex;
-  align-items: center !important;
-  flex-wrap: wrap !important;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 /* ── Mode 4 Popout Panel ───────────────────────────────────────── */
 .cl-popout-panel {
-  background: #181818 !important;
-  border: 1px solid #333 !important;
+  background: #181818;
+  border: 1px solid #333;
   /* overridden per-instance by inline style */
-  border-radius: 8px !important;
-  margin-bottom: 12px !important;
+  border-radius: 8px;
+  margin-bottom: 12px;
   /* No overflow:hidden — would clip interactive children and dropdowns */
-  transform-origin: top center !important;
+  transform-origin: top center;
 }
 
 
 .cl-popout-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 8px 14px !important;
-  background: #222 !important;
-  border-bottom: 1px solid #333 !important;
-  border-radius: 8px 8px 0 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #222;
+  border-bottom: 1px solid #333;
+  border-radius: 8px 8px 0 0;
 }
 
 .cl-popout-breadcrumb {
-  font-size: 12px !important;
-  color: #aaa !important;
+  font-size: 12px;
+  color: #aaa;
 }
 
 .cl-popout-breadcrumb strong {
-  color: #fff !important;
+  color: #fff;
 }
 
 .cl-popout-close-btn {
-  padding: 3px 10px !important;
-  border-radius: 4px !important;
-  border: 1px solid rgba(33, 150, 243, 0.4) !important;
-  background: rgba(33, 150, 243, 0.1) !important;
-  color: #2196F3 !important;
-  font-size: 11px !important;
-  cursor: pointer !important;
-  transition: all 0.15s !important;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(33, 150, 243, 0.4);
+  background: rgba(33, 150, 243, 0.1);
+  color: #2196F3;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
 .cl-popout-close-btn:hover {
   background: rgba(33, 150, 243, 0.3) !important;
+  /* !important required: overrides base class properties during state change */
 }
 
 .cl-popout-prop-wrap {
-  padding: 12px 14px !important;
+  padding: 12px 14px;
 }
 
 .cl-popout-prop-label {
-  font-size: 10px !important;
-  color: #888 !important;
-  text-transform: uppercase !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.5px !important;
-  margin-bottom: 6px !important;
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
 
 .cl-popout-editor-container {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: flex-start !important;
-  width: 100% !important;
-  min-height: 48px !important;
-  max-height: none !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 48px;
+  max-height: none;
   /* Full height in popout — no scroll limit */
-  background: #0d0d0d !important;
-  border: 1px solid #333 !important;
-  border-radius: 6px !important;
-  padding: 10px !important;
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5) !important;
-  overflow: visible !important;
+  background: #0d0d0d;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+  overflow: visible;
   /* Crucial for dropdown menus */
 }
