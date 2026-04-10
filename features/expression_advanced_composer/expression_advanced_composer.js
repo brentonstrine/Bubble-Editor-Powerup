@@ -1353,6 +1353,195 @@ window.loadedCodelessLoveScripts ||= {};
     return slot;
   }
 
+  // ── Display Mode Helpers ─────────────────────────────────────────────────
+  // Four modes: 'collapsed' | 'preview' | 'inline' | 'popout'
+  // Only tokens with a propertiesSchema receive a mode button.
+
+  function _texExprCount(texNode) {
+    if (!texNode || !texNode.entries) return 0;
+    return Object.values(texNode.entries).filter(v => v && typeof v === 'object' && v.type).length;
+  }
+  function _texCharCount(texNode) {
+    if (!texNode || !texNode.entries) return 0;
+    return Object.values(texNode.entries).filter(v => typeof v === 'string').reduce((s, v) => s + v.length, 0);
+  }
+
+  // Per-operator default mode computed from the token's current JSON content.
+  function defaultTokenMode(opDef, tokenObj) {
+    if (!opDef || !opDef.propertiesSchema) return 'inline';
+    if (tokenObj.type === 'ArbitraryText') {
+      const texNode = tokenObj.properties?.arbitrary_text;
+      const exprs = _texExprCount(texNode);
+      const chars = _texCharCount(texNode);
+      if (exprs === 0 && chars === 0) return 'inline';
+      if (exprs <= 1 && chars <= 20) return 'collapsed';
+      return 'preview';
+    }
+    return 'inline';
+  }
+
+  // Short label string for Mode 1 (Collapsed).
+  function renderCollapsedSummary(opDef, tokenObj) {
+    if (!opDef) return renderTokenText(tokenObj);
+    if (tokenObj.type === 'ArbitraryText') {
+      const texNode = tokenObj.properties?.arbitrary_text;
+      if (!texNode) return 'Arbitrary Text';
+      const textParts = texNode.entries
+        ? Object.values(texNode.entries).filter(v => typeof v === 'string' && v.trim()).join('').slice(0, 30)
+        : '';
+      const exprCount = _texExprCount(texNode);
+      const suffix = exprCount > 0 ? ` +${exprCount} expr` : '';
+      return textParts ? `"${textParts}"${suffix}` : `Arbitrary Text${suffix}`;
+    }
+    if (tokenObj.name === 'format_boolean') {
+      const yes = tokenObj.properties?.formatting_for_true?.entries?.['0'] || 'yes';
+      const no  = tokenObj.properties?.formatting_for_false?.entries?.['0'] || 'no';
+      return `{${yes} / ${no}}`;
+    }
+    if (tokenObj.name === 'extract') {
+      const unit = tokenObj.properties?.unit?.entries?.['0'] || '…';
+      return `{${unit}}`;
+    }
+    return renderTokenText(tokenObj);
+  }
+
+  // Human-readable string for Mode 2 (Condensed Preview) — walks a TextExpression tree.
+  function renderPreviewText(texNode) {
+    if (!texNode) return '(empty)';
+    if (typeof texNode === 'string') return texNode;
+    if (texNode.type !== 'TextExpression' || !texNode.entries) {
+      let parts = []; let cur = texNode;
+      while (cur) { parts.push(cur.type === 'Message' ? `:${cur.name}` : cur.type); cur = cur.next; }
+      return `{${parts.join('')}}`;
+    }
+    const keys = Object.keys(texNode.entries).sort((a, b) => Number(a) - Number(b));
+    return keys.map(k => {
+      const val = texNode.entries[k];
+      if (typeof val === 'string') return val;
+      if (val && typeof val === 'object') return renderPreviewText(val);
+      return '';
+    }).join('');
+  }
+
+  // In-session popout stack: [{tokenEl, panelEl}]
+  let _popoutStack = [];
+
+  function setTokenMode(tokenEl, mode) {
+    tokenEl.dataset.propMode = mode;
+    const cv = tokenEl.querySelector(':scope > .cl-prop-view-collapsed');
+    const pv = tokenEl.querySelector(':scope > .cl-prop-view-preview');
+    const iv = tokenEl.querySelector(':scope > .cl-prop-view-inline');
+    if (cv) cv.style.display = (mode === 'collapsed') ? '' : 'none';
+    if (pv) pv.style.display = (mode === 'preview')   ? '' : 'none';
+    if (iv) iv.style.display = (mode === 'inline')     ? '' : 'none';
+    const icons = { collapsed: '🔲', preview: '📄', inline: '✏️', popout: '⤢' };
+    const titles = { collapsed: 'Mode: Collapsed', preview: 'Mode: Preview', inline: 'Mode: Inline Edit', popout: 'Mode: Popout Edit' };
+    const btn = tokenEl.querySelector(':scope > .cl-mode-btn');
+    if (btn) { btn.textContent = icons[mode] || '⚙'; btn.title = titles[mode] || ''; }
+
+    // Highlight the token if it's being edited (Inline or Popout)
+    if (mode === 'inline' || mode === 'popout') {
+      tokenEl.classList.add('cl-token-editing');
+    } else {
+      tokenEl.classList.remove('cl-token-editing');
+    }
+
+    if (mode === 'popout') openPopoutEditor(tokenEl);
+    else if (_popoutStack.length && _popoutStack[_popoutStack.length - 1].tokenEl === tokenEl) {
+      closePopoutEditor(tokenEl);
+    }
+  }
+
+  function cycleTokenMode(tokenEl) {
+    const modes = ['collapsed', 'preview', 'inline', 'popout'];
+    const cur = tokenEl.dataset.propMode || 'inline';
+    setTokenMode(tokenEl, modes[(modes.indexOf(cur) + 1) % modes.length]);
+  }
+
+  // Mode 4: open a full-width editor panel stacked above the current panel.
+  function openPopoutEditor(tokenEl) {
+    const popupBody = document.querySelector('.cl-popup-body');
+    if (!popupBody) return;
+    if (_popoutStack.find(s => s.tokenEl === tokenEl)) return;
+
+    const rawData = JSON.parse(tokenEl.dataset.bubbleJson || '{}');
+    let opDef = null;
+    for (const key in BUBBLE_SCHEMA) {
+      const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
+      if (found) { opDef = found; break; }
+    }
+    if (!opDef) opDef = DATA_SOURCES.find(ds => ds.type === rawData.type);
+
+    const panel = document.createElement('div');
+    panel.className = 'cl-popout-panel';
+
+    const header = document.createElement('div');
+    header.className = 'cl-popout-header';
+    const label = opDef?.label || renderTokenText(rawData);
+    const breadcrumb = document.createElement('span');
+    breadcrumb.className = 'cl-popout-breadcrumb';
+    breadcrumb.innerHTML = `✏️ Editing: <strong>${label}</strong>`;
+    header.appendChild(breadcrumb);
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'cl-popout-close-btn';
+    closeBtn.textContent = '✓ Done';
+    closeBtn.addEventListener('click', e => { e.stopPropagation(); setTokenMode(tokenEl, 'collapsed'); });
+    header.appendChild(closeBtn);
+    panel.appendChild(header);
+
+    if (opDef?.propertiesSchema) {
+      opDef.propertiesSchema.forEach(p => {
+        const propWrap = document.createElement('div');
+        propWrap.className = 'cl-popout-prop-wrap';
+        const propLabel = document.createElement('div');
+        propLabel.className = 'cl-popout-prop-label';
+        propLabel.textContent = p.label;
+        propWrap.appendChild(propLabel);
+
+        // Mirror container: writes back to hidden inline node via MutationObserver
+        const mirrorContainer = document.createElement('span');
+        mirrorContainer.className = 'cl-arg-container cl-popout-editor-container';
+        if (p.type === 'text') mirrorContainer.classList.add('cl-tex-property-container');
+
+        const hiddenGroup = tokenEl.querySelector(`.cl-prop-view-inline .cl-prop-group[data-prop-key="${p.key}"]`);
+        const hiddenPContainer = hiddenGroup?.querySelector('.cl-arg-container');
+        if (hiddenPContainer) {
+          mirrorContainer.innerHTML = hiddenPContainer.innerHTML;
+          if (hiddenPContainer.dataset.textExpression) mirrorContainer.dataset.textExpression = 'true';
+          const obs = new MutationObserver(() => {
+            hiddenPContainer.innerHTML = mirrorContainer.innerHTML;
+            if (mirrorContainer.dataset.textExpression) hiddenPContainer.dataset.textExpression = 'true';
+            setTimeout(triggerRepack, 0);
+          });
+          obs.observe(mirrorContainer, { childList: true, subtree: true, characterData: true });
+          panel._observers = panel._observers || [];
+          panel._observers.push(obs);
+        } else if (p.type === 'text') {
+          renderTextExpressionContainer(mirrorContainer, rawData.properties?.[p.key] || null);
+        }
+
+        propWrap.appendChild(mirrorContainer);
+        panel.appendChild(propWrap);
+      });
+    }
+
+    const firstContainer = popupBody.querySelector('.cl-composer-container, .cl-popout-panel');
+    if (firstContainer) popupBody.insertBefore(panel, firstContainer);
+    else popupBody.appendChild(panel);
+
+    _popoutStack.push({ tokenEl, panelEl: panel });
+  }
+
+  function closePopoutEditor(tokenEl) {
+    const idx = _popoutStack.findIndex(s => s.tokenEl === tokenEl);
+    if (idx === -1) return;
+    const removed = _popoutStack.splice(idx);
+    removed.forEach(({ panelEl }) => {
+      if (panelEl._observers) panelEl._observers.forEach(o => o.disconnect());
+      panelEl.remove();
+    });
+  }
+
   function createTokenElement(tokenObj) {
     const span = document.createElement('span');
     span.className = 'cl-token';
@@ -1405,47 +1594,68 @@ window.loadedCodelessLoveScripts ||= {};
       }
 
       if (opDef && opDef.propertiesSchema) {
-         opDef.propertiesSchema.forEach(p => {
-            const group = document.createElement('span');
-            group.className = 'cl-prop-group';
-            group.dataset.propKey = p.key;
-            
-            // CRITICAL: Stop propagation so clicking inside YES/NO doesn't trigger the parent operator dropdown
-            group.addEventListener('mousedown', (e) => e.stopPropagation());
-            group.addEventListener('click', (e) => e.stopPropagation());
+        // ── Mode-cycle button ────────────────────────────────────────────────
+        const modeBtn = document.createElement('button');
+        modeBtn.className = 'cl-mode-btn';
+        modeBtn.textContent = '⚙';
+        modeBtn.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
+        modeBtn.addEventListener('click', e => { e.stopPropagation(); cycleTokenMode(span); });
+        span.appendChild(modeBtn);
 
-            const pLabel = document.createElement('span');
-            pLabel.className = 'cl-prop-label';
-            pLabel.textContent = p.label + ':';
-            group.appendChild(pLabel);
+        // ── View: Collapsed (Mode 1) ─────────────────────────────────────────
+        const collapsedView = document.createElement('span');
+        collapsedView.className = 'cl-prop-view-collapsed';
+        collapsedView.style.display = 'none';
+        collapsedView.textContent = renderCollapsedSummary(opDef, tokenObj);
+        span.appendChild(collapsedView);
 
-            const pContainer = document.createElement('span');
-            pContainer.className = 'cl-arg-container';
-            if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
-            
-            // If the incoming JSON already has this property, render it
-            if (tokenObj.properties && tokenObj.properties[p.key]) {
-               const propData = tokenObj.properties[p.key];
-               if (p.type === 'text') {
-                 // Use the interleaved TextExpression renderer
-                 renderTextExpressionContainer(pContainer, propData);
-               } else {
-                 // Non-text properties: render as a standard expression chain
-                 const pTokens = unpackExpression(propData);
-                 pTokens.forEach(pt => pContainer.appendChild(createTokenElement(pt)));
-               }
-            } else if (p.type === 'text') {
-               // Empty text property — render with a single empty literal zone
-               renderTextExpressionContainer(pContainer, null);
-            }
-            
-            group.appendChild(pContainer);
-            if (p.type === 'text') group.classList.add('cl-tex-prop-group');
-            span.appendChild(group);
-            
-            // Render slots (+) inside the property container immediately
-            syncAndValidate(pContainer);
-         });
+        // ── View: Preview (Mode 2) ───────────────────────────────────────────
+        const previewView = document.createElement('span');
+        previewView.className = 'cl-prop-view-preview';
+        previewView.style.display = 'none';
+        const previewText = opDef.propertiesSchema
+          .filter(p => p.type === 'text')
+          .map(p => renderPreviewText(tokenObj.properties?.[p.key]))
+          .join(' ');
+        previewView.textContent = previewText || '(empty)';
+        span.appendChild(previewView);
+
+        // ── View: Inline (Mode 3) ────────────────────────────────────────────
+        const inlineView = document.createElement('span');
+        inlineView.className = 'cl-prop-view-inline';
+        opDef.propertiesSchema.forEach(p => {
+           const group = document.createElement('span');
+           group.className = 'cl-prop-group';
+           group.dataset.propKey = p.key;
+           group.addEventListener('mousedown', e => e.stopPropagation());
+           group.addEventListener('click', e => e.stopPropagation());
+
+           const pLabel = document.createElement('span');
+           pLabel.className = 'cl-prop-label';
+           pLabel.textContent = p.label + ':';
+           group.appendChild(pLabel);
+
+           const pContainer = document.createElement('span');
+           pContainer.className = 'cl-arg-container';
+           if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
+
+           if (tokenObj.properties && tokenObj.properties[p.key]) {
+              const propData = tokenObj.properties[p.key];
+              if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
+              else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
+           } else if (p.type === 'text') {
+              renderTextExpressionContainer(pContainer, null);
+           }
+
+           if (p.type === 'text') group.classList.add('cl-tex-prop-group');
+           group.appendChild(pContainer);
+           inlineView.appendChild(group);
+           syncAndValidate(pContainer);
+        });
+        span.appendChild(inlineView);
+
+        // ── Apply default mode ───────────────────────────────────────────────
+        setTokenMode(span, defaultTokenMode(opDef, tokenObj));
       }
     }
     
