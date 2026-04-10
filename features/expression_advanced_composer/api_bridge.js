@@ -54,6 +54,9 @@ window.addEventListener('message', function(event) {
         const propNode = propertiesNode.child(propName);
         if (propNode.exists()) {
           const rawJson = propNode.raw();
+
+          // DIAGNOSTIC LOOP: Log full element JSON
+          console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Load):", JSON.stringify(elementNode.raw(), null, 2));
           
           // Let the popup script know the data is ready
           window.postMessage({
@@ -83,18 +86,28 @@ window.addEventListener('message', function(event) {
 
     try {
       const elementNode = window.appquery().app().json.by_path(lastIdentifiedElementPath);
-      if (elementNode.exists()) {
-        const propNode = elementNode.child('properties').child(lastIdentifiedPropName);
-        console.log(`💙❤️ Writing to Bubble node: ${lastIdentifiedElementPath}/properties/${lastIdentifiedPropName}`);
-        
-        // Push the new JSON into Bubble's app data structure
-        propNode.set(payload);
-        
-        // Force the editor to acknowledge the change so it shows up in property editor & saves to server
-        window.appquery().app().workspace.notify_app_structure_changed();
-        
-        console.log("💙❤️ Write-back successful!");
+      if (!elementNode.exists()) {
+        console.error("💙❤️ Element node not found at path:", lastIdentifiedElementPath);
+        return;
       }
+
+      // Write directly to the specific property sub-node with the required metadata.
+      // Metadata is what triggers Bubble's reactive change propagation — it must be present.
+      // Writing the full element back risks tripping Bubble's update pipeline on complex elements.
+      const metadata = { intent: { name: 'Bubble Editor Powerup from Codeless Love' } };
+      const propNode = elementNode.child('properties').child(lastIdentifiedPropName);
+
+      // DIAGNOSTIC: Pre-save state
+      console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Pre-Save):", JSON.stringify(elementNode.raw(), null, 2));
+
+      console.log(`💙❤️ Writing to Bubble node: ${lastIdentifiedElementPath}/properties/${lastIdentifiedPropName}`);
+      console.log("💙❤️ [DIAGNOSTIC] Payload being written:", JSON.stringify(payload, null, 2));
+      propNode.set(payload, metadata);
+        
+      // DIAGNOSTIC: Post-save state (read back from node)
+      console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Post-Save):", JSON.stringify(elementNode.raw(), null, 2));
+
+      console.log("💙❤️ Write-back successful!");
     } catch (e) {
       console.error("💙❤️ API Bridge Save Error:", e);
     }

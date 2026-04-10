@@ -246,7 +246,7 @@ window.loadedCodelessLoveScripts ||= {};
   function handleSave() {
     console.log("💙❤️ Save triggered: Committing compiled expression to Bubble...");
     const mainContainer = document.getElementById('cl-composer-main-container');
-    const finalExpression = packExpression(mainContainer);
+    const finalExpression = getPackedExpression(mainContainer);
     
     window.postMessage({
         type: 'CL_ADVANCED_COMPOSER_SAVE',
@@ -272,7 +272,8 @@ window.loadedCodelessLoveScripts ||= {};
     if (!jsonNode) return [];
 
     // General Handle: TextExpression wrapper
-    // Delegates to dedicated function that preserves full interleaved sequence.
+    // Safety net for sub-expression contexts. The top-level renderExpression()
+    // dispatches TextExpressions to renderTextExpressionContainer() directly.
     if (jsonNode.type === 'TextExpression' && jsonNode.entries) {
       // Fallback for non-property contexts: return the first expression in the entries.
       const exprKeys = Object.keys(jsonNode.entries).filter(k => {
@@ -339,7 +340,7 @@ window.loadedCodelessLoveScripts ||= {};
     return parts;
   }
 
-  // Renders a text-type property container as an interleaved sequence of
+  // Renders a text-type property container as a sequential list of
   // LiteralZones (editable text) and ExprZones (expression pill chains).
   function renderTextExpressionContainer(pContainer, texNode) {
     pContainer.innerHTML = '';
@@ -374,6 +375,7 @@ window.loadedCodelessLoveScripts ||= {};
 
     // Ensure virtual slots are synced for initial state (e.g. text-only or expression-only)
     syncVirtualSlots(pContainer);
+    finalizeContainer(pContainer);
   }
 
   // A virtual slot rendered before/after an ExprZone when the JSON contains no
@@ -634,7 +636,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
   }
 
-  // Scrapes an interleaved text-expression container into Bubble's sequential JSON format.
+  // Scrapes a TextExpression container (sequential text + expression zones) into Bubble's JSON format.
   // Only inserts "" between two adjacent ExprZones (the sole repair rule).
   function packTextExpression(pContainer) {
     const children = Array.from(pContainer.children).filter(c =>
@@ -695,6 +697,16 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   // --- Engine Packer (Phase 6) ---
+  // Helper that dispatches to the correct packer based on the container's personality.
+  // This ensures TextExpression wrappers are preserved at all levels.
+  function getPackedExpression(composerEl) {
+    if (!composerEl) return null;
+    if (composerEl.dataset.textExpression === 'true') {
+      return packTextExpression(composerEl);
+    }
+    return packExpression(composerEl);
+  }
+
   function packExpression(composerEl) {
     if (!composerEl) return null;
     
@@ -713,7 +725,7 @@ window.loadedCodelessLoveScripts ||= {};
       // Look for inner interactive args layer
       const argContainer = Array.from(tokenEl.children).find(c => c.classList.contains('cl-arg-container'));
       if (argContainer) {
-         const innerPacked = packExpression(argContainer);
+         const innerPacked = getPackedExpression(argContainer);
          if (innerPacked) rawData.args = innerPacked;
          else delete rawData.args;
       } else {
@@ -740,10 +752,10 @@ window.loadedCodelessLoveScripts ||= {};
                   const schemaItem = opDef && opDef.propertiesSchema && opDef.propertiesSchema.find(s => s.key === pkey);
                   
                   if (schemaItem && schemaItem.type === 'text' && pContainer.dataset.textExpression === 'true') {
-                     // Use the interleaved TextExpression scraper
+                     // Use the TextExpression sequential scraper
                      rawData.properties[pkey] = packTextExpression(pContainer);
                   } else {
-                     let pPacked = packExpression(pContainer);
+                     let pPacked = getPackedExpression(pContainer);
                      if (pPacked && schemaItem && schemaItem.type === 'text') {
                         // Fallback: plain string node → wrap
                         if (pPacked.type === 'String' && !pPacked.next) {
@@ -799,7 +811,7 @@ window.loadedCodelessLoveScripts ||= {};
   function triggerRepack() {
     const mainContainer = document.getElementById('cl-composer-main-container');
     if (!mainContainer) return;
-    const currentExpression = packExpression(mainContainer);
+    const currentExpression = getPackedExpression(mainContainer);
     
     const rawBox = document.getElementById('cl-composer-raw-json');
     if (rawBox) {
@@ -1969,25 +1981,40 @@ window.loadedCodelessLoveScripts ||= {};
     const container = document.getElementById('cl-composer-main-container');
     const rawBox = document.getElementById('cl-composer-raw-json');
     if (!container) return;
+
+    // Reset container personality
+    delete container.dataset.textExpression;
     
     // Diagnostic raw output
     if (rawBox) {
       rawBox.textContent = JSON.stringify(json, null, 2);
     }
-    
-    // Step 4: Unpack the JSON into a flat array
+
+    // Step 4: Dispatch to the correct rendering engine based on the sequential component type.
+    if (json && json.type === 'TextExpression') {
+      renderTextExpressionContainer(container, json);
+    } else {
+      renderStandardExpressionContainer(container, json);
+    }
+  }
+
+  // Regular linked-list expression renderer (Data Source -> Messages)
+  function renderStandardExpressionContainer(container, json) {
     const tokens = unpackExpression(json);
     console.log("💙❤️ Unpacked Flat Array:", tokens);
 
-    // Clear existing inner HTML
     container.innerHTML = '';
     
-    // Render the interactive DOM elements
     tokens.forEach((token) => {
       const tokenEl = createTokenElement(token);
       container.appendChild(tokenEl);
     });
 
+    finalizeContainer(container);
+  }
+
+  // Shared finalization logic for all root containers
+  function finalizeContainer(container) {
     // Ensure dragging across the root container behaves correctly
     if (!container.dataset.dragEventsAttached) {
       container.addEventListener('dragover', e => {
@@ -2015,8 +2042,11 @@ window.loadedCodelessLoveScripts ||= {};
       container.dataset.dragEventsAttached = "true";
     }
 
-    // Wrap everything in slots
-    syncAndValidate(container);
+    // For standard expression containers, wrap tokens in slots.
+    // TextExpression containers manage their own slots via syncVirtualSlots().
+    if (container.dataset.textExpression !== 'true') {
+      syncAndValidate(container);
+    }
     // Output initial state to diagnostic window
     triggerRepack();
   }
