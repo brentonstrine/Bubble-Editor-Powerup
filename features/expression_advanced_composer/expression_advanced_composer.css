@@ -499,6 +499,14 @@ body {
   font-family: inherit !important;
   white-space: nowrap !important;
   color: #aaa !important;
+  height: stretch;
+  font-size: 12px !important;
+  margin-left: 6px !important;
+  max-width: 300px !important;
+  overflow: hidden !important;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
 }
 
 .cl-preview-op {
@@ -554,19 +562,6 @@ body {
   font-style: italic !important;
 }
 
-/* ── Preview view (Mode 2) ─────────────────────────────────────── */
-.cl-prop-view-preview {
-  display: inline;
-  font-size: 12px !important;
-  color: #ccc !important;
-  margin-left: 6px !important;
-  max-width: 300px !important;
-  overflow: hidden !important;
-  overflow-x: auto !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  vertical-align: middle !important;
-}
 
 /* ── Inline view (Mode 3) wrapper ──────────────────────────────── */
 .cl-prop-view-inline {
