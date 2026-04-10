@@ -1598,13 +1598,8 @@ window.loadedCodelessLoveScripts ||= {};
       });
     }
 
-    // Apply depth-indexed highlight color to editing tokens; none when collapsed/preview
-    if (mode === 'inline') {
-      // Inline: always depth-0 white (no stack entry exists yet for this token)
-      tokenEl.style.setProperty('border-color', '#fff', 'important');
-      tokenEl.style.setProperty('box-shadow', '0 0 15px rgba(255,255,255,0.3)', 'important');
-      tokenEl.style.setProperty('background', 'rgba(255,255,255,0.05)', 'important');
-    } else if (mode === 'popout') {
+    // Apply depth-indexed highlight color to editing tokens; none when collapsed/preview/inline
+    if (mode === 'popout') {
       // Will be colored by openPopoutEditor after stack push; pre-apply white for now
       tokenEl.style.setProperty('border-color', '#fff', 'important');
       tokenEl.style.setProperty('box-shadow', '0 0 15px rgba(255,255,255,0.3)', 'important');

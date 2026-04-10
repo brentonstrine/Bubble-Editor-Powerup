@@ -131,6 +131,10 @@ body {
   user-select: none !important;
 }
 
+.cl-slot:first-child {
+  margin-left: 0 !important;
+}
+
 .cl-slot:hover {
   background: rgba(33, 150, 243, 0.2) !important;
   color: #2196F3 !important;
@@ -296,23 +300,23 @@ body {
 /* ── TextExpression Engine ──────────────────────────────────── */
 
 .cl-tex-literal {
-  display: inline-block !important;
-  min-width: 14px !important;
-  min-height: 24px !important;
-  padding: 4px 6px !important;
-  margin: 0 !important;
-  border-radius: 4px !important;
-  color: #fff !important;
-  background: transparent !important;
-  font-size: 13px !important;
-  line-height: normal !important;
-  outline: none !important;
-  border: 1px solid transparent !important;
-  transition: all 0.2s ease !important;
-  cursor: text !important;
-  word-wrap: break-word !important;
-  white-space: pre-wrap !important;
-  max-width: 100% !important;
+  display: inline-block;
+  min-width: 14px;
+  min-height: 1em;
+  padding: 4px 6px;
+  margin: 0;
+  border-radius: 4px;
+  color: #fff;
+  background: transparent;
+  font-size: 13px;
+  line-height: normal;
+  outline: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  cursor: text;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  max-width: 100%;
 }
 
 .cl-tex-literal:empty::before {
@@ -494,7 +498,7 @@ body {
 
 /* ── Mode 2 Preview Styling ────────────────────────────────────── */
 .cl-prop-view-preview {
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center !important;
   font-family: inherit !important;
   white-space: nowrap !important;
@@ -502,7 +506,7 @@ body {
   height: stretch;
   font-size: 12px !important;
   margin-left: 6px !important;
-  max-width: 300px !important;
+  max-width: 150px !important;
   overflow: hidden !important;
   overflow-x: auto !important;
   white-space: nowrap !important;
