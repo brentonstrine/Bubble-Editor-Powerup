@@ -408,7 +408,7 @@ window.loadedCodelessLoveScripts ||= {};
     zone.className = 'cl-tex-literal';
     zone.contentEditable = 'true';
     zone.textContent = value;
-    zone.setAttribute('placeholder', '...');
+    zone.setAttribute('placeholder', '+');
 
     // Track the typed text while the Hybrid dropdown is open
     let hybridDropdownOpen = false;
@@ -1495,7 +1495,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     if (tokenObj.name === 'extract') {
-      const unit = tokenObj.properties?.unit?.entries?.['0'] || '…';
+      const unit = tokenObj.properties?.unit?.entries?.['0'] || '+';
       return `{${unit}}${suffix}`;
     }
 
