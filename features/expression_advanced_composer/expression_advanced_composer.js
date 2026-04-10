@@ -1755,10 +1755,10 @@ window.loadedCodelessLoveScripts ||= {};
     if (idx === -1) return;
     const removed = _popoutStack.splice(idx);
 
-    removed.forEach(({ panelEl, opDef }) => {
+    removed.reverse().forEach(({ tokenEl: currentTokenEl, panelEl, opDef }) => {
       // ── Pack popout content back to the token's JSON ─────────────────
       if (panelEl._propContainers && panelEl._propContainers.length > 0) {
-        let rawData = JSON.parse(tokenEl.dataset.bubbleJson || '{}');
+        let rawData = JSON.parse(currentTokenEl.dataset.bubbleJson || '{}');
         rawData.properties = rawData.properties || {};
 
         panelEl._propContainers.forEach(({ key, type, el }) => {
@@ -1771,10 +1771,10 @@ window.loadedCodelessLoveScripts ||= {};
         });
 
         // Persist updated JSON on the token element
-        tokenEl.dataset.bubbleJson = JSON.stringify(rawData);
+        currentTokenEl.dataset.bubbleJson = JSON.stringify(rawData);
 
         // ── Re-render the hidden inline view from the fresh JSON ────────
-        const inlineView = tokenEl.querySelector(':scope > .cl-prop-view-inline');
+        const inlineView = currentTokenEl.querySelector(':scope > .cl-prop-view-inline');
         if (inlineView && opDef?.propertiesSchema) {
           inlineView.innerHTML = '';
           opDef.propertiesSchema.forEach(p => {
@@ -1809,20 +1809,17 @@ window.loadedCodelessLoveScripts ||= {};
         }
 
         // Also update collapsed/preview views
-        const collapsedView = tokenEl.querySelector(':scope > .cl-prop-view-collapsed');
-        const previewView   = tokenEl.querySelector(':scope > .cl-prop-view-preview');
+        const collapsedView = currentTokenEl.querySelector(':scope > .cl-prop-view-collapsed');
+        const previewView   = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
         if (collapsedView && opDef) collapsedView.textContent = renderCollapsedSummary(opDef, rawData);
-        if (previewView   && opDef) {
-          const previewText = opDef.propertiesSchema
-            .filter(p => p.type === 'text')
-            .map(p => renderPreviewText(rawData.properties?.[p.key]))
-            .join(' ');
-          previewView.textContent = previewText || '(empty)';
+        if (previewView && opDef) {
+          previewView.innerHTML = renderMode2Content(rawData);
         }
 
         triggerRepack();
       }
 
+      setTokenMode(currentTokenEl, 'inline');
       panelEl.remove();
     });
   }
