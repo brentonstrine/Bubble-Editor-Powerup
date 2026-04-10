@@ -1378,10 +1378,63 @@ window.loadedCodelessLoveScripts ||= {};
   // Four modes: 'collapsed' | 'preview' | 'inline' | 'popout'
   // Only tokens with a propertiesSchema receive a mode button.
 
+  // Counts the total number of expression blocks in a chain, excluding the start node if specified.
+  function _countChainLength(tokenObj, includeStart = false) {
+    let count = includeStart ? 0 : -1;
+    let cur = tokenObj;
+    while (cur) {
+      count++;
+      cur = cur.next;
+    }
+    return Math.max(0, count);
+  }
+
+  // Deeply counts all expression nodes within a TextExpression or a standard expression chain.
+  function _countAllExpressions(node) {
+    if (!node || typeof node !== 'object') return 0;
+    
+    // If it's a wrapper TextExpression, sum its entries
+    if (node.type === 'TextExpression' && node.entries) {
+      let sum = 0;
+      for (const k in node.entries) {
+        sum += _countAllExpressions(node.entries[k]);
+      }
+      return sum;
+    }
+
+    // Otherwise, it's a single expression block (potentially with a .next chain)
+    let total = 0;
+    let cur = node;
+    while (cur) {
+      if (cur.type && cur.type !== 'Message' && cur.type !== 'TextExpression') {
+        total++; // Count fundamental blocks like "Arbitrary Text"
+      } else if (cur.type === 'Message') {
+        total++; // Count modifiers like ":uppercase"
+      }
+
+      // Recursively count expressions hidden in properties (like Arbitrary Text's content)
+      if (cur.properties) {
+        for (const key in cur.properties) {
+          total += _countAllExpressions(cur.properties[key]);
+        }
+      }
+      cur = cur.next;
+    }
+    return total;
+  }
+
   function _texExprCount(texNode) {
     if (!texNode || !texNode.entries) return 0;
-    return Object.values(texNode.entries).filter(v => v && typeof v === 'object' && v.type).length;
+    let count = 0;
+    for (const key in texNode.entries) {
+      const val = texNode.entries[key];
+      if (val && typeof val === 'object') {
+        count += _countAllExpressions(val);
+      }
+    }
+    return count;
   }
+
   function _texCharCount(texNode) {
     if (!texNode || !texNode.entries) return 0;
     return Object.values(texNode.entries).filter(v => typeof v === 'string').reduce((s, v) => s + v.length, 0);
@@ -1419,44 +1472,80 @@ window.loadedCodelessLoveScripts ||= {};
   // Short label string for Mode 1 (Collapsed).
   function renderCollapsedSummary(opDef, tokenObj) {
     if (!opDef) return renderTokenText(tokenObj);
+
+    // Calculate the total number of "extra" expressions (modifiers + nested property expressions)
+    // We count the full chain complexity and subtract 1 (the current root token).
+    const totalComplexity = _countAllExpressions(tokenObj);
+    const extraCount = Math.max(0, totalComplexity - 1);
+    const suffix = extraCount > 0 ? ` +${extraCount} expr` : '';
+
     if (tokenObj.type === 'ArbitraryText') {
       const texNode = tokenObj.properties?.arbitrary_text;
-      if (!texNode) return 'Arbitrary Text';
+      if (!texNode) return 'Arbitrary Text' + suffix;
       const textParts = texNode.entries
         ? Object.values(texNode.entries).filter(v => typeof v === 'string' && v.trim()).join('').slice(0, 30)
         : '';
-      const exprCount = _texExprCount(texNode);
-      const suffix = exprCount > 0 ? ` +${exprCount} expr` : '';
       return textParts ? `"${textParts}"${suffix}` : `Arbitrary Text${suffix}`;
     }
+
     if (tokenObj.name === 'format_boolean') {
       const yes = tokenObj.properties?.formatting_for_true?.entries?.['0'] || 'yes';
       const no  = tokenObj.properties?.formatting_for_false?.entries?.['0'] || 'no';
-      return `{${yes} / ${no}}`;
+      return `{${yes} / ${no}}${suffix}`;
     }
+
     if (tokenObj.name === 'extract') {
       const unit = tokenObj.properties?.unit?.entries?.['0'] || '…';
-      return `{${unit}}`;
+      return `{${unit}}${suffix}`;
     }
-    return renderTokenText(tokenObj);
+
+    return renderTokenText(tokenObj) + suffix;
   }
 
   // Human-readable string for Mode 2 (Condensed Preview) — walks a TextExpression tree.
-  function renderPreviewText(texNode) {
-    if (!texNode) return '(empty)';
-    if (typeof texNode === 'string') return texNode;
-    if (texNode.type !== 'TextExpression' || !texNode.entries) {
-      let parts = []; let cur = texNode;
-      while (cur) { parts.push(cur.type === 'Message' ? `:${cur.name}` : cur.type); cur = cur.next; }
-      return `{${parts.join('')}}`;
+  function renderMode2Content(tokenObj) {
+    if (!tokenObj || typeof tokenObj !== 'object') return `<span class="cl-preview-lit">${tokenObj || ''}</span>`;
+    
+    // If it's a TextExpression wrapper, we flatten it
+    if (tokenObj.type === 'TextExpression' && tokenObj.entries) {
+      const keys = Object.keys(tokenObj.entries).sort((a, b) => Number(a) - Number(b));
+      return keys.map(k => renderMode2Content(tokenObj.entries[k])).join('');
     }
-    const keys = Object.keys(texNode.entries).sort((a, b) => Number(a) - Number(b));
-    return keys.map(k => {
-      const val = texNode.entries[k];
-      if (typeof val === 'string') return val;
-      if (val && typeof val === 'object') return renderPreviewText(val);
-      return '';
-    }).join('');
+
+    // Otherwise, walk the chain
+    let html = '';
+    let cur = tokenObj;
+    while (cur) {
+      if (cur.type === 'Message') {
+        html += `<span class="cl-preview-mod">:${cur.name}</span>`;
+      } else {
+        // Find opDef for label
+        let opDef = null;
+        for (const key in BUBBLE_SCHEMA) {
+          const found = BUBBLE_SCHEMA[key].find(o => o.op === cur.name);
+          if (found) { opDef = found; break; }
+        }
+        if (!opDef) opDef = DATA_SOURCES.find(ds => ds.type === cur.type);
+        
+        const label = opDef?.label || cur.name || cur.type;
+        html += `<span class="cl-preview-op">${label}</span>`;
+
+        // Add property previews in parentheses
+        if (opDef && opDef.propertiesSchema) {
+          const props = opDef.propertiesSchema.map(p => {
+            const val = cur.properties?.[p.key];
+            if (!val) return null;
+            return renderMode2Content(val);
+          }).filter(v => v !== null);
+
+          if (props.length > 0) {
+            html += `<span class="cl-preview-wrap">( ${props.join(', ')} )</span>`;
+          }
+        }
+      }
+      cur = cur.next;
+    }
+    return html;
   }
 
   // In-session popout stack: [{tokenEl, panelEl, opDef, color}]
@@ -1881,11 +1970,7 @@ window.loadedCodelessLoveScripts ||= {};
         const previewView = document.createElement('span');
         previewView.className = 'cl-prop-view-preview';
         previewView.style.display = 'none';
-        const previewText = opDef.propertiesSchema
-          .filter(p => p.type === 'text')
-          .map(p => renderPreviewText(tokenObj.properties?.[p.key]))
-          .join(' ');
-        previewView.textContent = previewText || '(empty)';
+        previewView.innerHTML = renderMode2Content(tokenObj);
         span.appendChild(previewView);
 
         // ── View: Inline (Mode 3) ────────────────────────────────────────────
