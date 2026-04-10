@@ -1421,6 +1421,7 @@ window.loadedCodelessLoveScripts ||= {};
 
             const pContainer = document.createElement('span');
             pContainer.className = 'cl-arg-container';
+            if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
             
             // If the incoming JSON already has this property, render it
             if (tokenObj.properties && tokenObj.properties[p.key]) {
@@ -1439,6 +1440,7 @@ window.loadedCodelessLoveScripts ||= {};
             }
             
             group.appendChild(pContainer);
+            if (p.type === 'text') group.classList.add('cl-tex-prop-group');
             span.appendChild(group);
             
             // Render slots (+) inside the property container immediately
