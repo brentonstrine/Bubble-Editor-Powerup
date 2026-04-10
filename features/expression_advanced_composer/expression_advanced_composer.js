@@ -1423,8 +1423,23 @@ window.loadedCodelessLoveScripts ||= {};
     }).join('');
   }
 
-  // In-session popout stack: [{tokenEl, panelEl}]
+  // In-session popout stack: [{tokenEl, panelEl, opDef, color}]
   let _popoutStack = [];
+
+  // Depth-indexed accent colors for nested editors.
+  // Blue (#2196F3) and yellow (#ffeb3b) are reserved for selection and drop-target.
+  const POPOUT_COLORS = [
+    '#ffffff', // depth 0 — white
+    '#4caf50', // depth 1 — green
+    '#ff9800', // depth 2 — orange
+    '#00bcd4', // depth 3 — cyan
+    '#e91e63', // depth 4 — pink
+    '#9c27b0', // depth 5 — purple
+  ];
+
+  function _popoutColor(depth) {
+    return POPOUT_COLORS[depth % POPOUT_COLORS.length];
+  }
 
   function setTokenMode(tokenEl, mode) {
     tokenEl.dataset.propMode = mode;
@@ -1439,11 +1454,21 @@ window.loadedCodelessLoveScripts ||= {};
     const btn = tokenEl.querySelector(':scope > .cl-mode-btn');
     if (btn) { btn.textContent = icons[mode] || '⚙'; btn.title = titles[mode] || ''; }
 
-    // Highlight the token if it's being edited (Inline or Popout)
-    if (mode === 'inline' || mode === 'popout') {
-      tokenEl.classList.add('cl-token-editing');
+    // Apply depth-indexed highlight color to editing tokens; none when collapsed/preview
+    if (mode === 'inline') {
+      // Inline: always depth-0 white (no stack entry exists yet for this token)
+      tokenEl.style.setProperty('border-color', '#fff', 'important');
+      tokenEl.style.setProperty('box-shadow', '0 0 15px rgba(255,255,255,0.3)', 'important');
+      tokenEl.style.setProperty('background', 'rgba(255,255,255,0.05)', 'important');
+    } else if (mode === 'popout') {
+      // Will be colored by openPopoutEditor after stack push; pre-apply white for now
+      tokenEl.style.setProperty('border-color', '#fff', 'important');
+      tokenEl.style.setProperty('box-shadow', '0 0 15px rgba(255,255,255,0.3)', 'important');
+      tokenEl.style.setProperty('background', 'rgba(255,255,255,0.05)', 'important');
     } else {
-      tokenEl.classList.remove('cl-token-editing');
+      tokenEl.style.removeProperty('border-color');
+      tokenEl.style.removeProperty('box-shadow');
+      tokenEl.style.removeProperty('background');
     }
 
     if (mode === 'popout') openPopoutEditor(tokenEl);
@@ -1466,6 +1491,9 @@ window.loadedCodelessLoveScripts ||= {};
     if (!popupBody) return;
     if (_popoutStack.find(s => s.tokenEl === tokenEl)) return;
 
+    const depth = _popoutStack.length; // 0 = first popout opened, 1 = second, …
+    const color = _popoutColor(depth);
+
     const rawData = JSON.parse(tokenEl.dataset.bubbleJson || '{}');
     let opDef = null;
     for (const key in BUBBLE_SCHEMA) {
@@ -1476,8 +1504,10 @@ window.loadedCodelessLoveScripts ||= {};
 
     const panel = document.createElement('div');
     panel.className = 'cl-popout-panel';
-    // Match the panel border to the token's editing highlight (white)
-    panel.style.setProperty('border-color', '#fff', 'important');
+    // Color-coded border matching the editing token
+    panel.style.setProperty('border-color', color, 'important');
+    // Header left-border accent
+    panel.style.setProperty('--popout-accent', color);
 
     // ── Header ──────────────────────────────────────────────────────────
     const header = document.createElement('div');
@@ -1538,7 +1568,12 @@ window.loadedCodelessLoveScripts ||= {};
     if (firstContainer) popupBody.insertBefore(panel, firstContainer);
     else popupBody.appendChild(panel);
 
-    _popoutStack.push({ tokenEl, panelEl: panel, opDef });
+    _popoutStack.push({ tokenEl, panelEl: panel, opDef, color });
+
+    // Now apply the correct depth color to the token (stack is updated, depth is known)
+    tokenEl.style.setProperty('border-color', color, 'important');
+    tokenEl.style.setProperty('box-shadow', `0 0 15px ${color}55`, 'important');
+    tokenEl.style.setProperty('background', `${color}11`, 'important');
   }
 
   // Closes a popout editor, packs the popout content back to JSON,

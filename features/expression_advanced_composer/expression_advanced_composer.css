@@ -205,11 +205,6 @@ body {
   background: rgba(33, 150, 243, 0.2) !important;
 }
 
-.cl-token.cl-token-editing {
-  border-color: #fff !important;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-}
 
 .cl-slot.invalid-syntax {
   border-color: #f44336 !important;
@@ -493,10 +488,10 @@ body {
 /* ── Mode 4 Popout Panel ───────────────────────────────────────── */
 .cl-popout-panel {
   background: #181818 !important;
-  border: 1px solid #2a2a2a !important;
+  border: 1px solid #333 !important; /* overridden per-instance by inline style */
   border-radius: 8px !important;
   margin-bottom: 12px !important;
-  overflow: hidden !important;
+  /* No overflow:hidden — would clip interactive children and dropdowns */
 }
 
 .cl-popout-header {
@@ -506,6 +501,8 @@ body {
   padding: 8px 14px !important;
   background: #222 !important;
   border-bottom: 1px solid #333 !important;
+  border-left: 3px solid var(--popout-accent, #fff) !important;
+  border-radius: 8px 8px 0 0 !important;
 }
 
 .cl-popout-breadcrumb {
