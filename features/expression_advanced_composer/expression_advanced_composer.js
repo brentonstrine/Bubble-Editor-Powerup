@@ -384,7 +384,7 @@ window.loadedCodelessLoveScripts ||= {};
   function createVirtualSlotElement(pContainer) {
     const vs = document.createElement('span');
     vs.className = 'cl-tex-virtual-slot';
-    vs.textContent = '+';
+    vs.textContent = '+1';
     vs.addEventListener('mousedown', e => e.stopPropagation());
     vs.addEventListener('click', e => {
       e.stopPropagation();
@@ -408,7 +408,7 @@ window.loadedCodelessLoveScripts ||= {};
     zone.className = 'cl-tex-literal';
     zone.contentEditable = 'true';
     zone.textContent = value;
-    zone.setAttribute('placeholder', '+');
+    zone.setAttribute('placeholder', '+2');//what is this one?
 
     // Track the typed text while the Hybrid dropdown is open
     let hybridDropdownOpen = false;
@@ -1300,7 +1300,7 @@ window.loadedCodelessLoveScripts ||= {};
     const slot = document.createElement('div');
     slot.className = 'cl-slot';
     slot.contentEditable = 'true';
-    slot.textContent = '+';
+    slot.textContent = '+3';
 
     slot.addEventListener('mousedown', (e) => {
       console.log("💙❤️ Slot Mousedown");
@@ -1344,7 +1344,7 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     slot.addEventListener('blur', e => {
-      slot.textContent = '+'; // Restore the '+'
+      slot.textContent = '+4'; // Restore the '+'
 
       setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
@@ -1495,7 +1495,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     if (tokenObj.name === 'extract') {
-      const unit = tokenObj.properties?.unit?.entries?.['0'] || '+';
+      const unit = tokenObj.properties?.unit?.entries?.['0'] || '+5';//what is this one?
       return `{${unit}}${suffix}`;
     }
 
@@ -1776,30 +1776,30 @@ window.loadedCodelessLoveScripts ||= {};
           }
         });
         currentTokenEl.dataset.bubbleJson = JSON.stringify(rawData);
-        
+
         // Refresh hidden inline/collapsed/preview views
         const inlineView = currentTokenEl.querySelector(':scope > .cl-prop-view-inline');
         if (inlineView && opDef?.propertiesSchema) {
           inlineView.innerHTML = '';
           opDef.propertiesSchema.forEach(p => {
-             const group = document.createElement('span');
-             group.className = 'cl-prop-group';
-             group.dataset.propKey = p.key;
-             const pContainer = document.createElement('span');
-             pContainer.className = 'cl-arg-container';
-             if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
-             const propData = rawData.properties[p.key];
-             if (propData) {
-               if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
-               else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
-             } else if (p.type === 'text') renderTextExpressionContainer(pContainer, null);
-             group.appendChild(pContainer);
-             inlineView.appendChild(group);
-             syncAndValidate(pContainer);
+            const group = document.createElement('span');
+            group.className = 'cl-prop-group';
+            group.dataset.propKey = p.key;
+            const pContainer = document.createElement('span');
+            pContainer.className = 'cl-arg-container';
+            if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
+            const propData = rawData.properties[p.key];
+            if (propData) {
+              if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
+              else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
+            } else if (p.type === 'text') renderTextExpressionContainer(pContainer, null);
+            group.appendChild(pContainer);
+            inlineView.appendChild(group);
+            syncAndValidate(pContainer);
           });
         }
         const collapsedView = currentTokenEl.querySelector(':scope > .cl-prop-view-collapsed');
-        const previewView   = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
+        const previewView = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
         if (collapsedView && opDef) collapsedView.textContent = renderCollapsedSummary(opDef, rawData);
         if (previewView && opDef) previewView.innerHTML = renderMode2Content(rawData);
       }
