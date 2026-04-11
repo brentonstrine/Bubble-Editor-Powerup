@@ -168,15 +168,11 @@ window.loadedCodelessLoveScripts ||= {};
           <div class="cl-composer-container" id="cl-composer-main-container">
             <!-- Tokens and Slots will be rendered here -->
           </div>
-          
-          <div style="margin-top: 16px;">
-            <div style="font-size: 11px; color: #888; margin-bottom: 4px;">Live JSON Engine Output (Diagnostics)</div>
-            <pre id="cl-composer-raw-json" style="margin: 0; padding: 12px; background: #0a0a0a; color: #4caf50; border: 1px solid #222; border-radius: 8px; font-family: monospace; font-size: 11px; max-height: 200px; overflow: auto;"></pre>
-          </div>
         </div>
         <div class="cl-composer-footer" style="padding: 12px 16px; background: rgba(0, 0, 0, 0.4); border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: flex-end; gap: 12px; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
-          <button class="cl-btn cl-btn-cancel" id="cl-btn-cancel" style="padding: 6px 12px; border-radius: 4px; border: none; font-family: inherit; font-size: 13px; cursor: pointer; background: rgba(255, 255, 255, 0.1); color: #fff;">Cancel</button>
-          <button class="cl-btn cl-btn-save" id="cl-btn-save" style="padding: 6px 12px; border-radius: 4px; border: none; font-family: inherit; font-size: 13px; cursor: pointer; background: #2196F3; color: #fff;">Save changes</button>
+          <textarea id="cl-composer-raw-json"></textarea>
+          <button class="cl-btn cl-btn-cancel" id="cl-btn-cancel">Cancel</button>
+          <button class="cl-btn cl-btn-save" id="cl-btn-save">Save changes</button>
         </div>
       </div>
     </div>
@@ -391,9 +387,9 @@ window.loadedCodelessLoveScripts ||= {};
       // Materialise a real LiteralZone in place of the virtual slot
       const literal = createTextZoneElement('');
       literal.dataset.ephemeral = 'true'; // flag; removed on Escape without content
-      
-      const adjacentLiteral = vs.previousElementSibling?.classList.contains('cl-tex-literal') || 
-                              vs.nextElementSibling?.classList.contains('cl-tex-literal');
+
+      const adjacentLiteral = vs.previousElementSibling?.classList.contains('cl-tex-literal') ||
+        vs.nextElementSibling?.classList.contains('cl-tex-literal');
 
       if (adjacentLiteral) {
         literal.contentEditable = 'false';
@@ -452,8 +448,8 @@ window.loadedCodelessLoveScripts ||= {};
 
     zone.addEventListener('keydown', e => {
       e.stopPropagation();
-      if (e.key === 'Enter') { 
-        e.preventDefault(); 
+      if (e.key === 'Enter') {
+        e.preventDefault();
         if (hybridDropdownOpen) {
           hideDropdown();
           hybridDropdownOpen = false;
@@ -470,7 +466,7 @@ window.loadedCodelessLoveScripts ||= {};
             sel.collapseToEnd();
           }
         }
-        return; 
+        return;
       }
 
       // ⌘/ (Mac) or Ctrl+/ (Windows) → insert expression into non-empty literal
