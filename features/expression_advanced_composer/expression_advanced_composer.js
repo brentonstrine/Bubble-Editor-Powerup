@@ -384,7 +384,7 @@ window.loadedCodelessLoveScripts ||= {};
   function createVirtualSlotElement(pContainer) {
     const vs = document.createElement('span');
     vs.className = 'cl-tex-virtual-slot';
-    vs.textContent = '+1';
+    vs.textContent = '+';
     vs.addEventListener('mousedown', e => e.stopPropagation());
     vs.addEventListener('click', e => {
       e.stopPropagation();
@@ -408,7 +408,7 @@ window.loadedCodelessLoveScripts ||= {};
     zone.className = 'cl-tex-literal';
     zone.contentEditable = 'true';
     zone.textContent = value;
-    zone.setAttribute('placeholder', '+2');//what is this one?
+    zone.setAttribute('placeholder', '+');
 
     // Track the typed text while the Hybrid dropdown is open
     let hybridDropdownOpen = false;
@@ -599,6 +599,22 @@ window.loadedCodelessLoveScripts ||= {};
     // 1. Remove all existing virtual slots first to recalculate
     pContainer.querySelectorAll('.cl-tex-virtual-slot').forEach(vs => vs.remove());
 
+    // 2. Merge adjacent literal zones to prevent redundant stacking in DOM/JSON
+    let currentLit = null;
+    Array.from(pContainer.children).forEach(c => {
+      if (c.classList.contains('cl-tex-literal')) {
+        if (currentLit) {
+          currentLit.textContent += c.textContent;
+          c.remove();
+        } else {
+          currentLit = c;
+        }
+      } else if (c.classList.contains('cl-tex-expr-zone')) {
+        currentLit = null;
+      }
+    });
+
+    // 3. Select clean remainder
     const children = Array.from(pContainer.children).filter(c =>
       c.classList.contains('cl-tex-literal') || c.classList.contains('cl-tex-expr-zone')
     );
@@ -1300,7 +1316,7 @@ window.loadedCodelessLoveScripts ||= {};
     const slot = document.createElement('div');
     slot.className = 'cl-slot';
     slot.contentEditable = 'true';
-    slot.textContent = '+3';
+    slot.textContent = '+';
 
     slot.addEventListener('mousedown', (e) => {
       console.log("💙❤️ Slot Mousedown");
@@ -1344,7 +1360,7 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     slot.addEventListener('blur', e => {
-      slot.textContent = '+4'; // Restore the '+'
+      slot.textContent = '+'; // Restore the '+'
 
       setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
@@ -1495,7 +1511,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     if (tokenObj.name === 'extract') {
-      const unit = tokenObj.properties?.unit?.entries?.['0'] || '+5';//what is this one?
+      const unit = tokenObj.properties?.unit?.entries?.['0'] || '+';
       return `{${unit}}${suffix}`;
     }
 
