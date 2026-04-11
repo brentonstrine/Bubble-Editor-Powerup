@@ -471,6 +471,9 @@ window.loadedCodelessLoveScripts ||= {};
             sel.selectAllChildren(zone);
             sel.collapseToEnd();
           }
+        } else {
+          // It's a committed literal. Insert a clean newline without letting the browser generate messy <div> or <p> tags.
+          document.execCommand('insertText', false, '\n');
         }
         return;
       }
