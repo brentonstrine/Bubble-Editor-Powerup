@@ -201,7 +201,7 @@ window.loadedCodelessLoveScripts ||= {};
         e.stopPropagation();
         closePopup();
       };
-      
+
       const btnCancel = document.getElementById('cl-btn-cancel');
       if (btnCancel) {
         btnCancel.onclick = (e) => { e.preventDefault(); e.stopPropagation(); closePopup(); };
@@ -225,18 +225,18 @@ window.loadedCodelessLoveScripts ||= {};
 
   function openPopup(expressionJson) {
     _cl_originalExpressionJson = JSON.parse(JSON.stringify(expressionJson)); // deep clone
-    
+
     const overlay = createPopup();
     overlay.style.setProperty('display', 'flex', 'important');
-    
+
     // Ensure the overlay is visible and centered
     overlay.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
+
     // Small delay to trigger transitions
     setTimeout(() => {
       overlay.classList.add('visible');
     }, 10);
-    
+
     console.log("💙❤️ Popup opened with expression (Cloned):", _cl_originalExpressionJson);
     // DEBUG: Log the absolute raw structure before any unpacking/rendering
     console.log("💙❤️ RAW JSON (DEBUG):", JSON.stringify(expressionJson, null, 2));
@@ -247,12 +247,12 @@ window.loadedCodelessLoveScripts ||= {};
     console.log("💙❤️ Save triggered: Committing compiled expression to Bubble...");
     const mainContainer = document.getElementById('cl-composer-main-container');
     const finalExpression = getPackedExpression(mainContainer);
-    
+
     window.postMessage({
-        type: 'CL_ADVANCED_COMPOSER_SAVE',
-        payload: finalExpression
+      type: 'CL_ADVANCED_COMPOSER_SAVE',
+      payload: finalExpression
     }, '*');
-    
+
     closePopup();
   }
 
@@ -280,7 +280,7 @@ window.loadedCodelessLoveScripts ||= {};
         const val = jsonNode.entries[k];
         return val && typeof val === 'object' && val.type;
       }).sort((a, b) => Number(a) - Number(b));
-      
+
       if (exprKeys.length > 0) {
         return unpackExpression(jsonNode.entries[exprKeys[0]]);
       }
@@ -299,7 +299,7 @@ window.loadedCodelessLoveScripts ||= {};
       let token = { ...current };
       delete token.next;
       flatArray.push(token);
-      
+
       // Traverse to the next node
       current = current.next;
     }
@@ -392,7 +392,7 @@ window.loadedCodelessLoveScripts ||= {};
       const literal = createTextZoneElement('');
       literal.dataset.ephemeral = 'true'; // flag; removed on Escape without content
       vs.replaceWith(literal);
-      
+
       // Use setTimeout to ensure the DOM shift is complete before focusing
       // and triggering the dropdown to avoid race conditions.
       setTimeout(() => literal.focus(), 0);
@@ -598,8 +598,8 @@ window.loadedCodelessLoveScripts ||= {};
   function syncVirtualSlots(pContainer) {
     // 1. Remove all existing virtual slots first to recalculate
     pContainer.querySelectorAll('.cl-tex-virtual-slot').forEach(vs => vs.remove());
-    
-    const children = Array.from(pContainer.children).filter(c => 
+
+    const children = Array.from(pContainer.children).filter(c =>
       c.classList.contains('cl-tex-literal') || c.classList.contains('cl-tex-expr-zone')
     );
 
@@ -614,7 +614,7 @@ window.loadedCodelessLoveScripts ||= {};
         if (!next || !next.classList.contains('cl-tex-literal')) {
           child.after(createVirtualSlotElement(pContainer));
         }
-      } 
+      }
       // Rule: Populated LiteralZones need an insertion point (virtual slot) after them 
       // (unless an ExprZone already exists there)
       else if (child.classList.contains('cl-tex-literal') && child.textContent.trim()) {
@@ -625,7 +625,7 @@ window.loadedCodelessLoveScripts ||= {};
         // Also ensure one before if it's the start
         const prev = children[i - 1];
         if (!prev || !prev.classList.contains('cl-tex-expr-zone')) {
-           child.before(createVirtualSlotElement(pContainer));
+          child.before(createVirtualSlotElement(pContainer));
         }
       }
     });
@@ -709,101 +709,101 @@ window.loadedCodelessLoveScripts ||= {};
 
   function packExpression(composerEl) {
     if (!composerEl) return null;
-    
+
     const tokens = Array.from(composerEl.children).filter(el => el.classList.contains('cl-token'));
-    
+
     // Recursive node chain builder
     function buildNode(index) {
       if (index >= tokens.length) return null;
-      
+
       const tokenEl = tokens[index];
-      
+
       // CRITICAL: Always parse a FRESH copy from the dataset to avoid mutation issues
       // between different parts of the recursive packing chain.
       let rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
-      
+
       // Look for inner interactive args layer
       const argContainer = Array.from(tokenEl.children).find(c => c.classList.contains('cl-arg-container'));
       if (argContainer) {
-         const innerPacked = getPackedExpression(argContainer);
-         if (innerPacked) rawData.args = innerPacked;
-         else delete rawData.args;
+        const innerPacked = getPackedExpression(argContainer);
+        if (innerPacked) rawData.args = innerPacked;
+        else delete rawData.args;
       } else {
-         // Handle propertiesSchema blocks
-         const propGroups = Array.from(tokenEl.querySelectorAll(':scope > .cl-prop-group'));
-         if (propGroups.length > 0) {
-            rawData.properties ||= {};
+        // Handle propertiesSchema blocks
+        const propGroups = Array.from(tokenEl.querySelectorAll(':scope > .cl-prop-group'));
+        if (propGroups.length > 0) {
+          rawData.properties ||= {};
 
-            // Resolve the operator definition to check for property types (TextExpression wrapping)
-            let opDef = null;
-            for (const key in BUBBLE_SCHEMA) {
-               const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
-               if (found) { opDef = found; break; }
-            }
-            // Also search in Data Sources schema
-            if (!opDef) {
-               opDef = DATA_SOURCES.find(ds => ds.type === rawData.type);
-            }
+          // Resolve the operator definition to check for property types (TextExpression wrapping)
+          let opDef = null;
+          for (const key in BUBBLE_SCHEMA) {
+            const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
+            if (found) { opDef = found; break; }
+          }
+          // Also search in Data Sources schema
+          if (!opDef) {
+            opDef = DATA_SOURCES.find(ds => ds.type === rawData.type);
+          }
 
-            propGroups.forEach(group => {
-               const pkey = group.dataset.propKey;
-               const pContainer = group.querySelector('.cl-arg-container');
-               if (pkey && pContainer) {
-                  const schemaItem = opDef && opDef.propertiesSchema && opDef.propertiesSchema.find(s => s.key === pkey);
-                  
-                  if (schemaItem && schemaItem.type === 'text' && pContainer.dataset.textExpression === 'true') {
-                     // Use the TextExpression sequential scraper
-                     rawData.properties[pkey] = packTextExpression(pContainer);
+          propGroups.forEach(group => {
+            const pkey = group.dataset.propKey;
+            const pContainer = group.querySelector('.cl-arg-container');
+            if (pkey && pContainer) {
+              const schemaItem = opDef && opDef.propertiesSchema && opDef.propertiesSchema.find(s => s.key === pkey);
+
+              if (schemaItem && schemaItem.type === 'text' && pContainer.dataset.textExpression === 'true') {
+                // Use the TextExpression sequential scraper
+                rawData.properties[pkey] = packTextExpression(pContainer);
+              } else {
+                let pPacked = getPackedExpression(pContainer);
+                if (pPacked && schemaItem && schemaItem.type === 'text') {
+                  // Fallback: plain string node → wrap
+                  if (pPacked.type === 'String' && !pPacked.next) {
+                    pPacked = { type: 'TextExpression', entries: { '0': pPacked.value !== undefined ? String(pPacked.value) : '' } };
                   } else {
-                     let pPacked = getPackedExpression(pContainer);
-                     if (pPacked && schemaItem && schemaItem.type === 'text') {
-                        // Fallback: plain string node → wrap
-                        if (pPacked.type === 'String' && !pPacked.next) {
-                           pPacked = { type: 'TextExpression', entries: { '0': pPacked.value !== undefined ? String(pPacked.value) : '' } };
-                        } else {
-                           pPacked = { type: 'TextExpression', entries: { '0': '', '1': pPacked, '2': '' } };
-                        }
-                     }
-                     if (pPacked) rawData.properties[pkey] = pPacked;
+                    pPacked = { type: 'TextExpression', entries: { '0': '', '1': pPacked, '2': '' } };
                   }
-               }
-            });
-         }
-
-         // Resolve primitive content edits if user typed inline
-         if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
-            const rawText = Array.from(tokenEl.childNodes)
-                     .filter(node => node.nodeType === Node.TEXT_NODE)
-                     .map(node => node.textContent).join('').trim();
-            
-            // CRITICAL: If rawData has an empty value but the DOM has text, use the DOM text
-            if (rawText && !rawData.value) {
-               if (rawData.type === 'Number') rawData.value = Number(rawText);
-               else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
-               else rawData.value = rawText;
-            } else {
-               if (rawData.type === 'Number') rawData.value = Number(rawText);
-               else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
-               else rawData.value = rawText;
+                }
+                if (pPacked) rawData.properties[pkey] = pPacked;
+              }
             }
-         }
+          });
+        }
+
+        // Resolve primitive content edits if user typed inline
+        if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
+          const rawText = Array.from(tokenEl.childNodes)
+            .filter(node => node.nodeType === Node.TEXT_NODE)
+            .map(node => node.textContent).join('').trim();
+
+          // CRITICAL: If rawData has an empty value but the DOM has text, use the DOM text
+          if (rawText && !rawData.value) {
+            if (rawData.type === 'Number') rawData.value = Number(rawText);
+            else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
+            else rawData.value = rawText;
+          } else {
+            if (rawData.type === 'Number') rawData.value = Number(rawText);
+            else if (rawData.type === 'sys.bool') rawData.value = (rawText === 'true' || rawText === 'yes' || rawText === '1');
+            else rawData.value = rawText;
+          }
+        }
       }
-      
+
       const nextNode = buildNode(index + 1);
       if (nextNode) rawData.next = nextNode;
       else delete rawData.next;
-      
+
       return rawData;
     }
-    
+
     const result = buildNode(0);
     if (!result) {
-       // FALLBACK: If no tokens, check the slots for raw text input
-       const slots = Array.from(composerEl.querySelectorAll(':scope > .cl-slot'));
-       const rawText = slots.map(s => s.textContent).join('').replace(/\+/g, '').trim();
-       if (rawText) {
-          return { type: "String", value: rawText };
-       }
+      // FALLBACK: If no tokens, check the slots for raw text input
+      const slots = Array.from(composerEl.querySelectorAll(':scope > .cl-slot'));
+      const rawText = slots.map(s => s.textContent).join('').replace(/\+/g, '').trim();
+      if (rawText) {
+        return { type: "String", value: rawText };
+      }
     }
     return result;
   }
@@ -812,7 +812,7 @@ window.loadedCodelessLoveScripts ||= {};
     const mainContainer = document.getElementById('cl-composer-main-container');
     if (!mainContainer) return;
     const currentExpression = getPackedExpression(mainContainer);
-    
+
     const rawBox = document.getElementById('cl-composer-raw-json');
     if (rawBox) {
       rawBox.textContent = JSON.stringify(currentExpression, null, 2);
@@ -838,14 +838,14 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "extract", arg: "text", ret: "text", label: ":extract..." },
       { op: "converted_to_number", arg: "null", ret: "number", label: ":converted to number" },
       { op: "split_by", arg: "text", ret: "List<text>", label: ":split by..." },
-      { 
-        op: "find_replace", 
+      {
+        op: "find_replace",
         propertiesSchema: [
           { key: "find", label: "find", type: "text" },
           { key: "replace", label: "replace", type: "text" }
         ],
-        ret: "text", 
-        label: ":find & replace" 
+        ret: "text",
+        label: ":find & replace"
       },
       { op: "extract_regex", arg: "text", ret: "List<text>", label: ":extract with Regex" },
       { op: "append", arg: "text", ret: "text", label: "append" },
@@ -880,14 +880,14 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "or_", arg: "sys.bool", ret: "sys.bool", label: "or" },
       { op: "is_true", arg: "null", ret: "sys.bool", label: "is yes" },
       { op: "is_false", arg: "null", ret: "sys.bool", label: "is no" },
-      { 
-        op: "format_boolean", 
+      {
+        op: "format_boolean",
         propertiesSchema: [
           { key: "formatting_for_true", label: "yes", type: "text" },
           { key: "formatting_for_false", label: "no", type: "text" }
         ],
-        ret: "text", 
-        label: ":formatted as text" 
+        ret: "text",
+        label: ":formatted as text"
       }
     ],
     "List": [
@@ -941,9 +941,9 @@ window.loadedCodelessLoveScripts ||= {};
     { type: "Search", ret: "List<any>", label: "Do a search for..." },
     { type: "CurrentUser", ret: "user", label: "Current User" },
     { type: "Input", ret: "text", label: "Input value" },
-    { 
-      type: "ArbitraryText", 
-      ret: "text", 
+    {
+      type: "ArbitraryText",
+      ret: "text",
       label: "Arbitrary text",
       propertiesSchema: [
         { key: "arbitrary_text", label: "", type: "text" }
@@ -954,51 +954,51 @@ window.loadedCodelessLoveScripts ||= {};
   function getComputedType(tokenEl) {
     if (!tokenEl) return null;
     const rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
-    
-    if (rawData.type === 'Message') {
-       const prevToken = tokenEl.previousElementSibling?.previousElementSibling;
-       const leftType = getComputedType(prevToken);
-       const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
-       
-       // 1. INTRINSIC RESOLUTION: Find the operator definition regardless of left-hand validity
-       // This allows the chain to "recover" its type (e.g. :trimmed is always text)
-       let opDef = null;
-       if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
-          opDef = BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name);
-       }
-       
-       // GLOBAL FALLBACK: If not found in specific schema, search all schemas to find intrinsic type
-       if (!opDef) {
-         for (const key in BUBBLE_SCHEMA) {
-           const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
-           if (found) { opDef = found; break; }
-         }
-       }
 
-       if (opDef) {
-           // Resolve generics (e.g. List<text> -> first_element returns 'text')
-           if (opDef.ret === 'any' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
-               return leftType.substring(5, leftType.length - 1);
-           }
-           if (opDef.ret === 'List<any>' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
-               return leftType;
-           }
-           return opDef.ret;
-       }
-       return 'error'; 
+    if (rawData.type === 'Message') {
+      const prevToken = tokenEl.previousElementSibling?.previousElementSibling;
+      const leftType = getComputedType(prevToken);
+      const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
+
+      // 1. INTRINSIC RESOLUTION: Find the operator definition regardless of left-hand validity
+      // This allows the chain to "recover" its type (e.g. :trimmed is always text)
+      let opDef = null;
+      if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
+        opDef = BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name);
+      }
+
+      // GLOBAL FALLBACK: If not found in specific schema, search all schemas to find intrinsic type
+      if (!opDef) {
+        for (const key in BUBBLE_SCHEMA) {
+          const found = BUBBLE_SCHEMA[key].find(o => o.op === rawData.name);
+          if (found) { opDef = found; break; }
+        }
+      }
+
+      if (opDef) {
+        // Resolve generics (e.g. List<text> -> first_element returns 'text')
+        if (opDef.ret === 'any' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
+          return leftType.substring(5, leftType.length - 1);
+        }
+        if (opDef.ret === 'List<any>' && leftType && leftType.startsWith('List<') && leftType.endsWith('>')) {
+          return leftType;
+        }
+        return opDef.ret;
+      }
+      return 'error';
     }
-    
+
     // Fallbacks
     if (rawData.type === 'Search') return 'List<any>';
     if (rawData.type === 'Expression' && rawData.value_type) return rawData.value_type;
     if (rawData.properties?.type_to_find) return 'List<' + rawData.properties.type_to_find + '>';
     if (rawData.properties?.type) return rawData.properties.type;
-    
+
     // Bubble internal defaults
     if (rawData.type === 'CurrentUser') return 'user';
     if (rawData.type === 'String' || rawData.type === 'ArbitraryText') return 'text';
     if (rawData.type === 'Number') return 'number';
-    
+
     return "text"; // Default
   }
 
@@ -1022,29 +1022,29 @@ window.loadedCodelessLoveScripts ||= {};
 
   function showDropdown(anchor) {
     if (!anchor || document.querySelectorAll('.cl-advanced-composer-popup .selected').length > 1) return;
-    
+
     if (dropdownHideTimeout) {
       clearTimeout(dropdownHideTimeout);
       dropdownHideTimeout = null;
     }
 
     hideDropdown(); // Remove the old one immediately
-    
+
     activeDropdown = document.createElement('div');
     activeDropdown.className = 'cl-dropdown';
-    
+
     const rect = anchor.getBoundingClientRect();
     activeDropdown.style.left = rect.left + 'px';
     activeDropdown.style.top = (rect.bottom + 4) + 'px';
     activeDropdown.dataset.anchorId = anchor.id || 'cl-anchor-' + Math.random().toString(36).substr(2, 9);
     if (!anchor.id) anchor.id = activeDropdown.dataset.anchorId;
     anchor.dataset.dropdownId = activeDropdown.dataset.anchorId;
-    
+
     const isSlot = anchor.classList.contains('cl-slot');
     // For a slot, the token to its left is previousElementSibling. 
     // For a token, the token to its left is previousElementSibling (which is a slot) -> previousElementSibling
     const referenceToken = isSlot ? anchor.previousElementSibling : anchor.previousElementSibling?.previousElementSibling;
-    
+
     if (!referenceToken || !referenceToken.classList.contains('cl-token')) {
       // First slot or first token -> Show Data Sources
       const title = isSlot ? "Data Sources" : "Replace Data Source";
@@ -1053,9 +1053,9 @@ window.loadedCodelessLoveScripts ||= {};
       // Subsequent slot/token -> Show Operators for left-hand token
       const leftType = getComputedType(referenceToken);
       const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
-      
+
       const title = isSlot ? `Actions for ${leftType}` : `Replace Action`;
-      
+
       if (schemaKey && BUBBLE_SCHEMA[schemaKey]) {
         addDropdownItems(activeDropdown, title, BUBBLE_SCHEMA[schemaKey].map(o => ({ label: o.label, val: o })));
       } else {
@@ -1064,7 +1064,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     const overlay = document.getElementById('cl-composer-overlay');
-    if(overlay) overlay.appendChild(activeDropdown);
+    if (overlay) overlay.appendChild(activeDropdown);
   }
 
   function addDropdownItems(dropdown, titleText, items) {
@@ -1092,68 +1092,68 @@ window.loadedCodelessLoveScripts ||= {};
         e.preventDefault();
         e.stopPropagation();
         console.log("💙❤️ Selected Dropdown Item:", item.val);
-        
+
         if (!activeDropdown) return;
         const anchorId = activeDropdown.dataset.anchorId;
         const anchor = document.getElementById(anchorId);
         console.log("💙❤️ Anchor lookup:", anchorId, "→", anchor, "parentNode:", anchor?.parentNode);
         hideDropdown();
-        
+
         if (anchor && item.val) {
-           let payload = item.val;
-           
-           if (payload.op) {
-              payload = { type: "Message", name: payload.op };
-              if (item.val.arg && item.val.arg !== 'null') {
-                 if (item.val.arg === 'number') payload.args = { type: 'Number', value: 0 };
-                 else if (item.val.arg === 'text') payload.args = { type: 'String', value: '' };
-                 else if (item.val.arg === 'sys.bool') payload.args = { type: 'sys.bool', value: false };
-                 else payload.args = { type: 'dynamic_stub', btype: item.val.arg };
+          let payload = item.val;
+
+          if (payload.op) {
+            payload = { type: "Message", name: payload.op };
+            if (item.val.arg && item.val.arg !== 'null') {
+              if (item.val.arg === 'number') payload.args = { type: 'Number', value: 0 };
+              else if (item.val.arg === 'text') payload.args = { type: 'String', value: '' };
+              else if (item.val.arg === 'sys.bool') payload.args = { type: 'sys.bool', value: false };
+              else payload.args = { type: 'dynamic_stub', btype: item.val.arg };
+            }
+          } else if (payload.type === 'Search') {
+            payload = { type: 'Search', properties: { type_to_find: "user" } };
+          } else if (payload.type === 'CurrentUser') {
+            payload = { type: 'CurrentUser' };
+          } else {
+            payload = JSON.parse(JSON.stringify(payload));
+          }
+
+          // If the item has its own onSelect handler (e.g. from showDropdownForTexLiteral
+          // which wires performTexSplit for cl-tex-literal hybrid slots), use it directly.
+          if (item.onSelect) {
+            item.onSelect();
+            return;
+          }
+
+          const tokenEl = createTokenElement(payload);
+          const parent = document.getElementById('cl-composer-main-container');
+
+          if (anchor.classList.contains('cl-slot')) {
+            const currentParent = anchor.parentNode || parent;
+            console.log("💙❤️ Inserting at slot, currentParent:", currentParent);
+            if (currentParent) {
+              currentParent.insertBefore(tokenEl, anchor.nextSibling);
+              syncAndValidate(currentParent);
+            }
+          } else if (anchor.classList.contains('cl-token')) {
+            const currentParent = anchor.parentNode || parent;
+            if (currentParent) {
+              currentParent.insertBefore(tokenEl, anchor);
+              anchor.remove();
+              syncAndValidate(currentParent);
+            } else {
+              // Failsafe
+              const realAnchor = document.getElementById(anchorId);
+              if (realAnchor && realAnchor.parentNode) {
+                realAnchor.parentNode.insertBefore(tokenEl, realAnchor);
+                realAnchor.remove();
+                syncAndValidate(realAnchor.parentNode);
+              } else {
+                parent.appendChild(tokenEl);
+                syncAndValidate(parent);
               }
-           } else if (payload.type === 'Search') {
-              payload = { type: 'Search', properties: { type_to_find: "user" } };
-           } else if (payload.type === 'CurrentUser') {
-              payload = { type: 'CurrentUser' };
-           } else {
-              payload = JSON.parse(JSON.stringify(payload));
-           }
-
-           // If the item has its own onSelect handler (e.g. from showDropdownForTexLiteral
-           // which wires performTexSplit for cl-tex-literal hybrid slots), use it directly.
-           if (item.onSelect) {
-             item.onSelect();
-             return;
-           }
-
-           const tokenEl = createTokenElement(payload);
-            const parent = document.getElementById('cl-composer-main-container');
-            
-            if (anchor.classList.contains('cl-slot')) {
-                 const currentParent = anchor.parentNode || parent;
-                 console.log("💙❤️ Inserting at slot, currentParent:", currentParent);
-                 if (currentParent) {
-                    currentParent.insertBefore(tokenEl, anchor.nextSibling);
-                    syncAndValidate(currentParent);
-                 }
-             } else if (anchor.classList.contains('cl-token')) {
-                 const currentParent = anchor.parentNode || parent;
-                 if (currentParent) {
-                     currentParent.insertBefore(tokenEl, anchor);
-                     anchor.remove();
-                     syncAndValidate(currentParent);
-                 } else {
-                     // Failsafe
-                     const realAnchor = document.getElementById(anchorId);
-                     if (realAnchor && realAnchor.parentNode) {
-                         realAnchor.parentNode.insertBefore(tokenEl, realAnchor);
-                         realAnchor.remove();
-                         syncAndValidate(realAnchor.parentNode);
-                     } else {
-                         parent.appendChild(tokenEl);
-                         syncAndValidate(parent);
-                     }
-                 }
-             }
+            }
+          }
         }
       });
       dropdown.appendChild(option);
@@ -1206,7 +1206,7 @@ window.loadedCodelessLoveScripts ||= {};
     const popup = document.querySelector('.cl-advanced-composer-popup');
     const selectedItems = Array.from(popup.querySelectorAll('.selected'));
     if (selectedItems.length === 0) return;
-    
+
     console.log("💙❤️ Dropped token(s) into new slot");
 
     let ref = slot;
@@ -1221,7 +1221,7 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     clearDropTargets();
-    
+
     // Sync all possible composers that were affected
     document.querySelectorAll('#cl-composer-main-container, .cl-arg-container').forEach(c => syncAndValidate(c));
     // Removed clearSelection() so dropped items stay blue/selected
@@ -1229,7 +1229,7 @@ window.loadedCodelessLoveScripts ||= {};
 
   function syncAndValidate(composerEl) {
     let composer = composerEl || document.getElementById('cl-composer-main-container');
-    
+
     // Safety: If it's a DOM string or null, resolve to document body or exit
     if (typeof composer === 'string') composer = document.getElementById(composer);
     if (!composer || !(composer instanceof Element)) return;
@@ -1237,21 +1237,21 @@ window.loadedCodelessLoveScripts ||= {};
     // 1. Remove all existing slots within this specific container
     const kids = Array.from(composer.children);
     kids.forEach(s => {
-       if (s && s.classList.contains('cl-slot') && s.parentNode === composer) {
-          try { s.remove(); } catch(e) {}
-       }
+      if (s && s.classList.contains('cl-slot') && s.parentNode === composer) {
+        try { s.remove(); } catch (e) { }
+      }
     });
 
     // 2. Insert slots around tokens (unless this is a TextExpression container managed by LiteralZones)
     const isTextExpr = (composer.dataset.textExpression === 'true');
     const tokens = Array.from(composer.children).filter(c => c.classList.contains('cl-token'));
-    
+
     // Special Case: If it's a TextExpression with exactly one empty literal node, 
     // it's already a slot. Adding a cl-slot is redundant.
-    const isSingleEmptyLiteral = isTextExpr && 
-                                 composer.children.length === 1 && 
-                                 composer.firstElementChild.classList.contains('cl-tex-literal') && 
-                                 !composer.firstElementChild.textContent.trim();
+    const isSingleEmptyLiteral = isTextExpr &&
+      composer.children.length === 1 &&
+      composer.firstElementChild.classList.contains('cl-tex-literal') &&
+      !composer.firstElementChild.textContent.trim();
 
     if (tokens.length === 0) {
       // For standard containers, if no tokens exist, we need a single slot.
@@ -1264,7 +1264,7 @@ window.loadedCodelessLoveScripts ||= {};
       if (!isTextExpr) {
         composer.insertBefore(createSlotElement(), tokens[0]);
       }
-      
+
       // Slot after every token
       tokens.forEach((t, i) => {
         // In TextExpressions, the "after" slot is usually the next sibling LiteralZone.
@@ -1273,44 +1273,44 @@ window.loadedCodelessLoveScripts ||= {};
           const afterSlot = createSlotElement();
           composer.insertBefore(afterSlot, t.nextSibling);
         }
-        
+
         // --- Validation Check ---
         t.classList.remove('invalid-syntax');
         const rawData = JSON.parse(t.dataset.bubbleJson || "{}");
         if (rawData.type === 'Message') {
-           // For validation highlighting, we need to find the appropriate 'before' slot/literal
-           const beforeUI = t.previousElementSibling;
-           if (beforeUI) beforeUI.classList.remove('invalid-syntax');
-           
-           const prevToken = tokens[i - 1]; // Left token in the sequence
-           const leftType = getComputedType(prevToken);
-           const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
-           
-           if (!schemaKey || !BUBBLE_SCHEMA[schemaKey] || !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
-               if (beforeUI) beforeUI.classList.add('invalid-syntax');
-           }
+          // For validation highlighting, we need to find the appropriate 'before' slot/literal
+          const beforeUI = t.previousElementSibling;
+          if (beforeUI) beforeUI.classList.remove('invalid-syntax');
+
+          const prevToken = tokens[i - 1]; // Left token in the sequence
+          const leftType = getComputedType(prevToken);
+          const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
+
+          if (!schemaKey || !BUBBLE_SCHEMA[schemaKey] || !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
+            if (beforeUI) beforeUI.classList.add('invalid-syntax');
+          }
         }
       });
     }
-    
-    setTimeout(triggerRepack, 0); 
+
+    setTimeout(triggerRepack, 0);
   }
 
   function createSlotElement() {
     const slot = document.createElement('div');
-    slot.className = 'cl-slot'; 
+    slot.className = 'cl-slot';
     slot.contentEditable = 'true';
     slot.textContent = '+';
-    
+
     slot.addEventListener('mousedown', (e) => {
       console.log("💙❤️ Slot Mousedown");
-      if (e.shiftKey && shiftAnchorElement) { 
-        updateSelection(shiftAnchorElement, slot); 
-        slot.focus(); 
-      } else { 
-        clearSelection(); 
-        shiftAnchorElement = slot; 
-        slot.focus(); 
+      if (e.shiftKey && shiftAnchorElement) {
+        updateSelection(shiftAnchorElement, slot);
+        slot.focus();
+      } else {
+        clearSelection();
+        shiftAnchorElement = slot;
+        slot.focus();
       }
     });
 
@@ -1321,54 +1321,54 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     slot.addEventListener('keydown', e => {
-      if (e.key === 'ArrowRight') { 
-        e.preventDefault(); 
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
         hideDropdown();
-        const n = slot.nextElementSibling; 
-        if (n) { 
-          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, n); 
-          else { clearSelection(); shiftAnchorElement = n; } 
-          n.focus(); 
-        } 
+        const n = slot.nextElementSibling;
+        if (n) {
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, n);
+          else { clearSelection(); shiftAnchorElement = n; }
+          n.focus();
+        }
       }
-      if (e.key === 'ArrowLeft') { 
-        e.preventDefault(); 
-        const p = slot.previousElementSibling; 
-        if (p) { 
-          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p); 
-          else { clearSelection(); shiftAnchorElement = p; } 
-          p.focus(); 
-        } 
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const p = slot.previousElementSibling;
+        if (p) {
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p);
+          else { clearSelection(); shiftAnchorElement = p; }
+          p.focus();
+        }
       }
       if (e.key === 'Enter' || e.key === ' ') e.preventDefault();
     });
 
     slot.addEventListener('blur', e => {
       slot.textContent = '+'; // Restore the '+'
-      
+
       setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
         hideDropdown();
       }, 150);
-      
+
       // Removed syncAndValidate(slot.parentElement) from here to prevent race conditions during insertion
     });
 
-    slot.addEventListener('dragover', e => { 
-      e.preventDefault(); 
+    slot.addEventListener('dragover', e => {
+      e.preventDefault();
       e.stopPropagation();
-      clearDropTargets(); 
-      slot.classList.add('drop-target'); 
+      clearDropTargets();
+      slot.classList.add('drop-target');
     });
 
     slot.addEventListener('dragleave', (e) => {
-        e.stopPropagation();
-        slot.classList.remove('drop-target');
+      e.stopPropagation();
+      slot.classList.remove('drop-target');
     });
-    slot.addEventListener('drop', e => { 
-        e.preventDefault(); 
-        e.stopPropagation();
-        handleDropOnSlot(slot); 
+    slot.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDropOnSlot(slot);
     });
 
     return slot;
@@ -1392,7 +1392,7 @@ window.loadedCodelessLoveScripts ||= {};
   // Deeply counts all expression nodes within a TextExpression or a standard expression chain.
   function _countAllExpressions(node) {
     if (!node || typeof node !== 'object') return 0;
-    
+
     // If it's a wrapper TextExpression, sum its entries
     if (node.type === 'TextExpression' && node.entries) {
       let sum = 0;
@@ -1490,7 +1490,7 @@ window.loadedCodelessLoveScripts ||= {};
 
     if (tokenObj.name === 'format_boolean') {
       const yes = tokenObj.properties?.formatting_for_true?.entries?.['0'] || 'yes';
-      const no  = tokenObj.properties?.formatting_for_false?.entries?.['0'] || 'no';
+      const no = tokenObj.properties?.formatting_for_false?.entries?.['0'] || 'no';
       return `{${yes} / ${no}}${suffix}`;
     }
 
@@ -1505,7 +1505,7 @@ window.loadedCodelessLoveScripts ||= {};
   // Human-readable string for Mode 2 (Condensed Preview) — walks a TextExpression tree.
   function renderMode2Content(tokenObj) {
     if (!tokenObj || typeof tokenObj !== 'object') return `<span class="cl-preview-lit">${tokenObj || ''}</span>`;
-    
+
     // If it's a TextExpression wrapper, we flatten it
     if (tokenObj.type === 'TextExpression' && tokenObj.entries) {
       const keys = Object.keys(tokenObj.entries).sort((a, b) => Number(a) - Number(b));
@@ -1526,7 +1526,7 @@ window.loadedCodelessLoveScripts ||= {};
           if (found) { opDef = found; break; }
         }
         if (!opDef) opDef = DATA_SOURCES.find(ds => ds.type === cur.type);
-        
+
         const label = opDef?.label || cur.name || cur.type;
         html += `<span class="cl-preview-op">${label}</span>`;
 
@@ -1554,12 +1554,12 @@ window.loadedCodelessLoveScripts ||= {};
   // Depth-indexed accent colors for nested editors.
   // Blue (#2196F3) and yellow (#ffeb3b) are reserved for selection and drop-target.
   const POPOUT_COLORS = [
-    '#ffffff', // depth 0 — white
-    '#4caf50', // depth 1 — green
-    '#ff9800', // depth 2 — orange
-    '#00bcd4', // depth 3 — cyan
-    '#e91e63', // depth 4 — pink
-    '#9c27b0', // depth 5 — purple
+    '#e91e63', // depth 0 — pink
+    '#4caf50', // depth 2 — green
+    '#ff9800', // depth 3 — orange
+    '#00bcd4', // depth 4 — cyan
+    '#9c27b0', // depth 1 — purple
+    '#ffffff'  // depth 5 — white 
   ];
 
   function _popoutColor(depth) {
@@ -1572,13 +1572,13 @@ window.loadedCodelessLoveScripts ||= {};
     const cv = tokenEl.querySelector(':scope > .cl-prop-view-collapsed');
     const pv = tokenEl.querySelector(':scope > .cl-prop-view-preview');
     const iv = tokenEl.querySelector(':scope > .cl-prop-view-inline');
-    
+
     if (tokenEl._viewTimeout) clearTimeout(tokenEl._viewTimeout);
 
     const applyViews = () => {
       if (cv) cv.style.display = (mode === 'collapsed') ? '' : 'none';
-      if (pv) pv.style.display = (mode === 'preview')   ? '' : 'none';
-      if (iv) iv.style.display = (mode === 'inline')     ? '' : 'none';
+      if (pv) pv.style.display = (mode === 'preview') ? '' : 'none';
+      if (iv) iv.style.display = (mode === 'inline') ? '' : 'none';
     };
 
     if (mode === 'popout') {
@@ -1588,7 +1588,7 @@ window.loadedCodelessLoveScripts ||= {};
     } else {
       applyViews();
     }
-    
+
     // Update active class on dropdown items if menu exists
     const menuItems = tokenEl.querySelectorAll(':scope > .cl-mode-wrap > .cl-mode-menu > .cl-mode-item');
     if (menuItems.length) {
@@ -1653,9 +1653,9 @@ window.loadedCodelessLoveScripts ||= {};
     const closeBtn = document.createElement('button');
     closeBtn.className = 'cl-popout-close-btn';
     closeBtn.textContent = '✓ Done';
-    closeBtn.addEventListener('click', e => { 
-      e.stopPropagation(); 
-      setTokenMode(tokenEl, 'reverting'); 
+    closeBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      setTokenMode(tokenEl, 'reverting');
     });
     header.appendChild(closeBtn);
     panel.appendChild(header);
@@ -1813,7 +1813,7 @@ window.loadedCodelessLoveScripts ||= {};
 
         // Also update collapsed/preview views
         const collapsedView = currentTokenEl.querySelector(':scope > .cl-prop-view-collapsed');
-        const previewView   = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
+        const previewView = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
         if (collapsedView && opDef) collapsedView.textContent = renderCollapsedSummary(opDef, rawData);
         if (previewView && opDef) {
           previewView.innerHTML = renderMode2Content(rawData);
@@ -1835,16 +1835,16 @@ window.loadedCodelessLoveScripts ||= {};
     const span = document.createElement('span');
     span.className = 'cl-token';
     span.tabIndex = 0;
-    
+
     // Store raw JSON for later
     span.dataset.bubbleJson = JSON.stringify(tokenObj);
     span.draggable = true;
-    
+
     // Set initial text content ONLY for terminal primitive values
     if (tokenObj.type === 'Number' || tokenObj.type === 'String' || tokenObj.type === 'sys.bool') {
-       span.textContent = renderTokenText(tokenObj);
+      span.textContent = renderTokenText(tokenObj);
     }
-    
+
     if (tokenObj.args !== undefined) {
       // Operator has arguments! We build a nested structure
       const labelNode = document.createElement('span');
@@ -1854,11 +1854,11 @@ window.loadedCodelessLoveScripts ||= {};
 
       const argContainer = document.createElement('span');
       argContainer.className = 'cl-arg-container';
-      
+
       // Stop events inside the argument container from bubbling up to the parent token
       argContainer.addEventListener('mousedown', (e) => e.stopPropagation());
       argContainer.addEventListener('click', (e) => e.stopPropagation());
-      
+
       const unpackedArgs = unpackExpression(tokenObj.args);
       unpackedArgs.forEach(arg => argContainer.appendChild(createTokenElement(arg)));
       span.appendChild(argContainer);
@@ -1874,84 +1874,84 @@ window.loadedCodelessLoveScripts ||= {};
       let opDef = null;
       // Search in general operators schema
       for (const key in BUBBLE_SCHEMA) {
-         const found = BUBBLE_SCHEMA[key].find(o => o.op === tokenObj.name);
-         if (found) { opDef = found; break; }
+        const found = BUBBLE_SCHEMA[key].find(o => o.op === tokenObj.name);
+        if (found) { opDef = found; break; }
       }
       // NEW: Also search in Data Sources schema (e.g. Arbitrary Text)
       if (!opDef) {
-         opDef = DATA_SOURCES.find(ds => ds.type === tokenObj.type);
+        opDef = DATA_SOURCES.find(ds => ds.type === tokenObj.type);
       }
 
       if (opDef && opDef.propertiesSchema) {
         // ── Mode Dropdown Menu ───────────────────────────────────────────────
         const modeWrap = document.createElement('span');
         modeWrap.className = 'cl-mode-wrap';
-        
+
         const modeBtn = document.createElement('button');
         modeBtn.className = 'cl-mode-btn';
         modeBtn.textContent = '⋮';
         modeBtn.title = 'Change Edit Mode';
         modeBtn.addEventListener('mousedown', e => { e.stopPropagation(); });
-        
+
         const modeMenu = document.createElement('div');
         modeMenu.className = 'cl-mode-menu';
         // Prevent clicking inside the menu from bubbling up and selecting the token itself
         modeMenu.addEventListener('mousedown', e => e.stopPropagation());
 
-        modeBtn.addEventListener('click', e => { 
-            console.log("💙❤️ Three dot menu clicked");
-            e.stopPropagation(); 
-            // Close any other open menus
-            document.querySelectorAll('.cl-mode-menu.visible').forEach(m => {
-                if (m !== modeMenu) {
-                    m.classList.remove('visible');
-                    const otherWrap = m.closest('.cl-mode-wrap');
-                    if (otherWrap) otherWrap.style.zIndex = '';
-                }
-            });
-            
-            // Toggle this menu
-            const isVisible = modeMenu.classList.contains('visible');
-            if (isVisible) {
-                modeMenu.classList.remove('visible');
-                modeWrap.style.zIndex = '';
-                return;
+        modeBtn.addEventListener('click', e => {
+          console.log("💙❤️ Three dot menu clicked");
+          e.stopPropagation();
+          // Close any other open menus
+          document.querySelectorAll('.cl-mode-menu.visible').forEach(m => {
+            if (m !== modeMenu) {
+              m.classList.remove('visible');
+              const otherWrap = m.closest('.cl-mode-wrap');
+              if (otherWrap) otherWrap.style.zIndex = '';
             }
+          });
 
-            modeWrap.style.zIndex = '10000';
+          // Toggle this menu
+          const isVisible = modeMenu.classList.contains('visible');
+          if (isVisible) {
+            modeMenu.classList.remove('visible');
+            modeWrap.style.zIndex = '';
+            return;
+          }
 
-            // Rebuild menu contents dynamically based on nesting context
-            modeMenu.innerHTML = '';
-            const nested = _isNestedInline(span);
-            const modes = nested
-                ? [{id: 'collapsed', name: 'Collapsed'}, {id: 'preview', name: 'Read Only'}, {id: 'popout', name: 'Edit in new box above'}]
-                : [{id: 'collapsed', name: 'Collapsed'}, {id: 'preview', name: 'Read Only'}, {id: 'inline', name: 'Inline Edit'}, {id: 'popout', name: 'Edit in new box above'}];
+          modeWrap.style.zIndex = '10000';
 
-            const currentMode = span.dataset.propMode || 'inline';
-            
-            modes.forEach(m => {
-                const item = document.createElement('div');
-                item.className = 'cl-mode-item';
-                item.dataset.modeId = m.id;
-                if (currentMode === m.id) item.classList.add('active');
-                item.textContent = m.name;
-                item.addEventListener('mousedown', ev => {
-                    console.log("💙❤️ [MENU ITEM] mousedown fired for:", m.name);
-                    ev.stopPropagation();
-                    ev.preventDefault();
-                    setTokenMode(span, m.id);
-                    modeMenu.classList.remove('visible');
-                    modeWrap.style.zIndex = '';
-                });
-                // Keep click as backup log
-                item.addEventListener('click', ev => {
-                    console.log("💙❤️ [MENU ITEM] click fired (should be after mousedown) for:", m.name);
-                    ev.stopPropagation();
-                });
-                modeMenu.appendChild(item);
+          // Rebuild menu contents dynamically based on nesting context
+          modeMenu.innerHTML = '';
+          const nested = _isNestedInline(span);
+          const modes = nested
+            ? [{ id: 'collapsed', name: 'Collapsed' }, { id: 'preview', name: 'Read Only' }, { id: 'popout', name: 'Edit in new box above' }]
+            : [{ id: 'collapsed', name: 'Collapsed' }, { id: 'preview', name: 'Read Only' }, { id: 'inline', name: 'Inline Edit' }, { id: 'popout', name: 'Edit in new box above' }];
+
+          const currentMode = span.dataset.propMode || 'inline';
+
+          modes.forEach(m => {
+            const item = document.createElement('div');
+            item.className = 'cl-mode-item';
+            item.dataset.modeId = m.id;
+            if (currentMode === m.id) item.classList.add('active');
+            item.textContent = m.name;
+            item.addEventListener('mousedown', ev => {
+              console.log("💙❤️ [MENU ITEM] mousedown fired for:", m.name);
+              ev.stopPropagation();
+              ev.preventDefault();
+              setTokenMode(span, m.id);
+              modeMenu.classList.remove('visible');
+              modeWrap.style.zIndex = '';
             });
-            
-            modeMenu.classList.add('visible');
+            // Keep click as backup log
+            item.addEventListener('click', ev => {
+              console.log("💙❤️ [MENU ITEM] click fired (should be after mousedown) for:", m.name);
+              ev.stopPropagation();
+            });
+            modeMenu.appendChild(item);
+          });
+
+          modeMenu.classList.add('visible');
         });
 
         modeWrap.appendChild(modeBtn);
@@ -1976,33 +1976,33 @@ window.loadedCodelessLoveScripts ||= {};
         const inlineView = document.createElement('span');
         inlineView.className = 'cl-prop-view-inline';
         opDef.propertiesSchema.forEach(p => {
-           const group = document.createElement('span');
-           group.className = 'cl-prop-group';
-           group.dataset.propKey = p.key;
-           group.addEventListener('mousedown', e => e.stopPropagation());
-           group.addEventListener('click', e => e.stopPropagation());
+          const group = document.createElement('span');
+          group.className = 'cl-prop-group';
+          group.dataset.propKey = p.key;
+          group.addEventListener('mousedown', e => e.stopPropagation());
+          group.addEventListener('click', e => e.stopPropagation());
 
-           const pLabel = document.createElement('span');
-           pLabel.className = 'cl-prop-label';
-           pLabel.textContent = p.label + ':';
-           group.appendChild(pLabel);
+          const pLabel = document.createElement('span');
+          pLabel.className = 'cl-prop-label';
+          pLabel.textContent = p.label + ':';
+          group.appendChild(pLabel);
 
-           const pContainer = document.createElement('span');
-           pContainer.className = 'cl-arg-container';
-           if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
+          const pContainer = document.createElement('span');
+          pContainer.className = 'cl-arg-container';
+          if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
 
-           if (tokenObj.properties && tokenObj.properties[p.key]) {
-              const propData = tokenObj.properties[p.key];
-              if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
-              else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
-           } else if (p.type === 'text') {
-              renderTextExpressionContainer(pContainer, null);
-           }
+          if (tokenObj.properties && tokenObj.properties[p.key]) {
+            const propData = tokenObj.properties[p.key];
+            if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
+            else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
+          } else if (p.type === 'text') {
+            renderTextExpressionContainer(pContainer, null);
+          }
 
-           if (p.type === 'text') group.classList.add('cl-tex-prop-group');
-           group.appendChild(pContainer);
-           inlineView.appendChild(group);
-           syncAndValidate(pContainer);
+          if (p.type === 'text') group.classList.add('cl-tex-prop-group');
+          group.appendChild(pContainer);
+          inlineView.appendChild(group);
+          syncAndValidate(pContainer);
         });
         span.appendChild(inlineView);
 
@@ -2010,14 +2010,14 @@ window.loadedCodelessLoveScripts ||= {};
         setTokenMode(span, defaultTokenMode(opDef, tokenObj, span));
       }
     }
-    
+
     span.addEventListener('dragstart', e => {
       // If drag started inside a nested property group, let that sub-element handle it
       if (e.target && e.target.nodeType === 1 && e.target.closest('.cl-prop-group')) return;
 
       e.stopPropagation();
       console.log("💙❤️ Token Dragstart");
-      
+
       const selected = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
       // If we're dragging something not in the current selection, clear and select it
       if (!selected.includes(span)) {
@@ -2025,14 +2025,14 @@ window.loadedCodelessLoveScripts ||= {};
         span.classList.add('selected');
         selected.push(span);
       }
-      
+
       // OFFSET GHOST IMAGE: Move it down 15px and right 60px away from the cursor
       if (e.dataTransfer && typeof e.dataTransfer.setDragImage === 'function') {
-         // setDragImage(element, xOffset, yOffset) 
-         // xOffset/yOffset are coordinates relative to the element where the pointer should be.
-         // To move element DOWN/RIGHT of cursor, we tell browser the cursor is at -15, -60 relative to element.
-         // Actually, most browsers clip the image if you use negative offsets, so we use a small positive offset for the cursor's "pin".
-         e.dataTransfer.setDragImage(span, -20, -20); 
+        // setDragImage(element, xOffset, yOffset) 
+        // xOffset/yOffset are coordinates relative to the element where the pointer should be.
+        // To move element DOWN/RIGHT of cursor, we tell browser the cursor is at -15, -60 relative to element.
+        // Actually, most browsers clip the image if you use negative offsets, so we use a small positive offset for the cursor's "pin".
+        e.dataTransfer.setDragImage(span, -20, -20);
       }
 
       setTimeout(() => {
@@ -2057,24 +2057,24 @@ window.loadedCodelessLoveScripts ||= {};
 
     span.addEventListener('blur', () => {
       span.contentEditable = "false";
-      
+
       dropdownHideTimeout = setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
         hideDropdown();
       }, 150);
-      
+
       // Removed syncAndValidate(span.parentElement) to prevent DOM corruption during dropdown click replacements
-      
+
       // Update data-json for primitives when user finishes typing
       const rawData = JSON.parse(span.dataset.bubbleJson || "{}");
       if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
-         const newText = span.textContent.trim();
-         if (rawData.type === 'Number') rawData.value = Number(newText);
-         else if (rawData.type === 'sys.bool') rawData.value = (newText === 'true' || newText === 'yes');
-         else rawData.value = newText;
-         
-         span.dataset.bubbleJson = JSON.stringify(rawData);
-         triggerRepack();
+        const newText = span.textContent.trim();
+        if (rawData.type === 'Number') rawData.value = Number(newText);
+        else if (rawData.type === 'sys.bool') rawData.value = (newText === 'true' || newText === 'yes');
+        else rawData.value = newText;
+
+        span.dataset.bubbleJson = JSON.stringify(rawData);
+        triggerRepack();
       }
     });
 
@@ -2092,15 +2092,15 @@ window.loadedCodelessLoveScripts ||= {};
       if (e.target && e.target.nodeType === 1 && e.target.closest('.cl-prop-group')) return;
 
       e.stopPropagation();
-      
+
       // INSTANT SELECTION: Don't wait for movement threshold to turn blue
       if (!e.shiftKey && !span.classList.contains('selected')) {
-         console.log("💙❤️ Token focus/active state programmatically given");
-         clearSelection();
-         span.classList.add('selected');
-         shiftAnchorElement = span;
+        console.log("💙❤️ Token focus/active state programmatically given");
+        clearSelection();
+        span.classList.add('selected');
+        shiftAnchorElement = span;
       }
-      
+
       startX = e.clientX; startY = e.clientY;
       const onMouseUp = (ue) => {
         // If it was just a click (not a drag), ensure final focus/shift-selection state
@@ -2121,7 +2121,7 @@ window.loadedCodelessLoveScripts ||= {};
     span.addEventListener('focus', (e) => {
       e.stopPropagation();
       const rawData = JSON.parse(span.dataset.bubbleJson);
-      
+
       // Only allow inline text editing on terminal primitive values
       if (rawData.type === 'Number' || rawData.type === 'String' || rawData.type === 'sys.bool') {
         span.contentEditable = "true";
@@ -2138,53 +2138,53 @@ window.loadedCodelessLoveScripts ||= {};
     });
 
     span.addEventListener('keydown', e => {
-      if (e.key === 'ArrowRight') { 
-        e.preventDefault(); 
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
         e.stopPropagation();
         hideDropdown();
-        if (span.nextElementSibling) { 
-          const n = span.nextElementSibling; 
-          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, n); 
-          else { clearSelection(); shiftAnchorElement = n; } 
-          n.focus(); 
-        } 
+        if (span.nextElementSibling) {
+          const n = span.nextElementSibling;
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, n);
+          else { clearSelection(); shiftAnchorElement = n; }
+          n.focus();
+        }
       }
-      if (e.key === 'ArrowLeft') { 
-        e.preventDefault(); 
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
         e.stopPropagation();
         hideDropdown();
-        if (span.previousElementSibling) { 
-          const p = span.previousElementSibling; 
-          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p); 
-          else { clearSelection(); shiftAnchorElement = p; } 
-          p.focus(); 
-        } 
+        if (span.previousElementSibling) {
+          const p = span.previousElementSibling;
+          if (e.shiftKey && shiftAnchorElement) updateSelection(shiftAnchorElement, p);
+          else { clearSelection(); shiftAnchorElement = p; }
+          p.focus();
+        }
       }
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.stopPropagation();
         const selected = Array.from(document.querySelectorAll('.cl-advanced-composer-popup .selected'));
         const parent = span.parentElement;
         if (selected.length > 0) {
-            selected.forEach(el => el.remove());
+          selected.forEach(el => el.remove());
         } else {
-            span.remove();
+          span.remove();
         }
         syncAndValidate(parent);
         console.log("💙❤️ Token(s) deleted");
       }
       if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); span.blur(); }
     });
-    
+
     return span;
   }
 
   function renderTokenText(token) {
     let text = token.type;
-    
+
     if (token.type === 'Number' || token.type === 'String' || token.type === 'sys.bool') {
-       return String(token.value !== undefined ? token.value : token.type);
+      return String(token.value !== undefined ? token.value : token.type);
     }
-    
+
     if (token.type === 'Message') {
       text = ":" + (token.name || "unknown");
     } else if (token.type === 'ArbitraryText') {
@@ -2192,7 +2192,7 @@ window.loadedCodelessLoveScripts ||= {};
     } else if (token.type === 'Search') {
       text = "Search for " + (token.properties?.type_to_find || "...");
     }
-    
+
     return text;
   }
 
@@ -2203,7 +2203,7 @@ window.loadedCodelessLoveScripts ||= {};
 
     // Reset container personality
     delete container.dataset.textExpression;
-    
+
     // Diagnostic raw output
     if (rawBox) {
       rawBox.textContent = JSON.stringify(json, null, 2);
@@ -2223,7 +2223,7 @@ window.loadedCodelessLoveScripts ||= {};
     console.log("💙❤️ Unpacked Flat Array:", tokens);
 
     container.innerHTML = '';
-    
+
     tokens.forEach((token) => {
       const tokenEl = createTokenElement(token);
       container.appendChild(tokenEl);
