@@ -391,6 +391,15 @@ window.loadedCodelessLoveScripts ||= {};
       // Materialise a real LiteralZone in place of the virtual slot
       const literal = createTextZoneElement('');
       literal.dataset.ephemeral = 'true'; // flag; removed on Escape without content
+      
+      const adjacentLiteral = vs.previousElementSibling?.classList.contains('cl-tex-literal') || 
+                              vs.nextElementSibling?.classList.contains('cl-tex-literal');
+
+      if (adjacentLiteral) {
+        literal.contentEditable = 'false';
+        literal.tabIndex = 0;
+      }
+
       vs.replaceWith(literal);
 
       // Use setTimeout to ensure the DOM shift is complete before focusing
@@ -422,9 +431,10 @@ window.loadedCodelessLoveScripts ||= {};
       showTexHint();
       // Hybrid Slot: open dropdown immediately if zone is empty
       if (!zone.textContent.trim()) {
-        hybridDropdownOpen = true;
+        const allowText = zone.contentEditable !== 'false';
+        hybridDropdownOpen = allowText;
         capturedTypedText = '';
-        showDropdownForTexLiteral(zone, true);
+        showDropdownForTexLiteral(zone, allowText);
       }
     });
 
