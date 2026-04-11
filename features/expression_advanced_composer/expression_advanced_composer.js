@@ -33,17 +33,12 @@ window.loadedCodelessLoveScripts ||= {};
 
     console.log("💙❤️ Attempting to inject Advanced Composer button into row:", row);
 
-    // Force the row to column so our button sits below the input
-    row.style.setProperty('flex-direction', 'column', 'important');
-    row.style.setProperty('align-items', 'flex-start', 'important');
-
     const isItemWrapper = target.closest('.item-wrapper') !== null;
     const marginTop = isItemWrapper ? '5px' : '5px';//always 5px for now. will change this in the future when we've fixed the issue with the Expand button above being in frontof it, preventing clicks.
 
     const wrapper = document.createElement('div');
     wrapper.className = '❤️advanced-composer';
     wrapper.setAttribute('data-cl-injected', 'true');
-    wrapper.style.cssText = `width: 100%; display: flex; justify-content: flex-start; margin-top: ${marginTop};`;
 
     const btn = document.createElement('div');
     btn.className = 'expand-collapse-button';
@@ -76,10 +71,14 @@ window.loadedCodelessLoveScripts ||= {};
     };
 
     wrapper.appendChild(btn);
-    row.appendChild(wrapper);
+    // Explicitly target the primary field labels we care about
+    const label = row.parentElement?.querySelector('#field_data_source_label, #field_text_label');
+    if (label) {
+      label.after(wrapper);
+    } else {
+      row.appendChild(wrapper);
+    }
     row.setAttribute('data-cl-attached', 'true');
-
-    console.log("💙❤️ Injection complete!");
 
     // Double check after a short delay if it's still there
     setTimeout(() => {
@@ -866,7 +865,7 @@ window.loadedCodelessLoveScripts ||= {};
 
     const rawBox = document.getElementById('cl-composer-raw-json');
     if (rawBox) {
-      rawBox.value = JSON.stringify(currentExpression, null, 2);
+      rawBox.value = "//Raw JSON for diagnostics\n" + JSON.stringify(currentExpression, null, 2);
     }
   }
 
