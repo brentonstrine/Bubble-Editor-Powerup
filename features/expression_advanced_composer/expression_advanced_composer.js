@@ -1559,7 +1559,7 @@ window.loadedCodelessLoveScripts ||= {};
     '#ff9800', // depth 3 — orange
     '#00bcd4', // depth 4 — cyan
     '#9c27b0', // depth 1 — purple
-    '#ffffff'  // depth 5 — white 
+    '#ffffff'  // depth 5 — white
   ];
 
   function _popoutColor(depth) {
@@ -1758,76 +1758,73 @@ window.loadedCodelessLoveScripts ||= {};
     if (idx === -1) return;
     const removed = _popoutStack.splice(idx);
 
-    removed.reverse().forEach(({ tokenEl: currentTokenEl, panelEl, opDef }) => {
-      // ── Pack popout content back to the token's JSON ─────────────────
+    // To ensure a smooth staggered animation without data race conditions,
+    // we first perform all the data packing/saving synchronously for the entire branch,
+    // then schedule the staggered visual exits.
+    const staggerSpeed = 400; // ms per box animation as requested
+
+    // Phase 1: Pack data immediately (innermost first)
+    removed.slice().reverse().forEach(({ tokenEl: currentTokenEl, panelEl, opDef }) => {
       if (panelEl._propContainers && panelEl._propContainers.length > 0) {
         let rawData = JSON.parse(currentTokenEl.dataset.bubbleJson || '{}');
         rawData.properties = rawData.properties || {};
-
         panelEl._propContainers.forEach(({ key, type, el }) => {
-          if (type === 'text') {
-            rawData.properties[key] = packTextExpression(el);
-          } else {
+          if (type === 'text') rawData.properties[key] = packTextExpression(el);
+          else {
             const packed = packExpression(el);
             if (packed) rawData.properties[key] = packed;
           }
         });
-
-        // Persist updated JSON on the token element
         currentTokenEl.dataset.bubbleJson = JSON.stringify(rawData);
-
-        // ── Re-render the hidden inline view from the fresh JSON ────────
+        
+        // Refresh hidden inline/collapsed/preview views
         const inlineView = currentTokenEl.querySelector(':scope > .cl-prop-view-inline');
         if (inlineView && opDef?.propertiesSchema) {
           inlineView.innerHTML = '';
           opDef.propertiesSchema.forEach(p => {
-            const group = document.createElement('span');
-            group.className = 'cl-prop-group';
-            group.dataset.propKey = p.key;
-            group.addEventListener('mousedown', e => e.stopPropagation());
-            group.addEventListener('click', e => e.stopPropagation());
-
-            const pLabel = document.createElement('span');
-            pLabel.className = 'cl-prop-label';
-            pLabel.textContent = p.label + ':';
-            group.appendChild(pLabel);
-
-            const pContainer = document.createElement('span');
-            pContainer.className = 'cl-arg-container';
-            if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
-
-            const propData = rawData.properties[p.key];
-            if (propData) {
-              if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
-              else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
-            } else if (p.type === 'text') {
-              renderTextExpressionContainer(pContainer, null);
-            }
-
-            if (p.type === 'text') group.classList.add('cl-tex-prop-group');
-            group.appendChild(pContainer);
-            inlineView.appendChild(group);
-            syncAndValidate(pContainer);
+             const group = document.createElement('span');
+             group.className = 'cl-prop-group';
+             group.dataset.propKey = p.key;
+             const pContainer = document.createElement('span');
+             pContainer.className = 'cl-arg-container';
+             if (p.type === 'text') pContainer.classList.add('cl-tex-property-container');
+             const propData = rawData.properties[p.key];
+             if (propData) {
+               if (p.type === 'text') renderTextExpressionContainer(pContainer, propData);
+               else { const pts = unpackExpression(propData); pts.forEach(pt => pContainer.appendChild(createTokenElement(pt))); }
+             } else if (p.type === 'text') renderTextExpressionContainer(pContainer, null);
+             group.appendChild(pContainer);
+             inlineView.appendChild(group);
+             syncAndValidate(pContainer);
           });
         }
-
-        // Also update collapsed/preview views
         const collapsedView = currentTokenEl.querySelector(':scope > .cl-prop-view-collapsed');
-        const previewView = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
+        const previewView   = currentTokenEl.querySelector(':scope > .cl-prop-view-preview');
         if (collapsedView && opDef) collapsedView.textContent = renderCollapsedSummary(opDef, rawData);
-        if (previewView && opDef) {
-          previewView.innerHTML = renderMode2Content(rawData);
-        }
-
-        triggerRepack();
+        if (previewView && opDef) previewView.innerHTML = renderMode2Content(rawData);
       }
+    });
 
-      // Revert the token to its logic-appropriate default mode instead of hardcoding 'inline'.
-      const bubbleJson = JSON.parse(currentTokenEl.dataset.bubbleJson || '{}');
-      const finalMode = defaultTokenMode(opDef, bubbleJson, currentTokenEl);
-      setTokenMode(currentTokenEl, finalMode);
+    // Phase 2: Staggered Visual Exit (topmost first)
+    // The "removed" array contains [clickedElement, ...childrenAboveIt]
+    // We want to animate childrenAboveIt first, so we reverse it.
+    removed.reverse().forEach(({ tokenEl: currentTokenEl, panelEl, opDef }, index) => {
+      setTimeout(() => {
+        // Animation trigger
+        panelEl.style.transition = `all ${staggerSpeed}ms cubic-bezier(0.4, 0, 1, 1)`;
+        panelEl.style.transform = 'translateY(100px)';
+        panelEl.style.opacity = '0';
 
-      panelEl.remove();
+        // Wait for animation to finish before removal and mode revert
+        setTimeout(() => {
+          const bubbleJson = JSON.parse(currentTokenEl.dataset.bubbleJson || '{}');
+          const finalMode = defaultTokenMode(opDef, bubbleJson, currentTokenEl);
+          setTokenMode(currentTokenEl, finalMode);
+          panelEl.remove();
+          triggerRepack();
+        }, staggerSpeed);
+
+      }, index * staggerSpeed);
     });
   }
 
