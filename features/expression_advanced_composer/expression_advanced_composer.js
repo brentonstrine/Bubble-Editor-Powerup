@@ -1611,7 +1611,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     if (mode === 'popout') openPopoutEditor(tokenEl);
-    else if (_popoutStack.length && _popoutStack[_popoutStack.length - 1].tokenEl === tokenEl) {
+    else if (_popoutStack.some(s => s.tokenEl === tokenEl)) {
       closePopoutEditor(tokenEl);
     }
   }
@@ -1653,7 +1653,10 @@ window.loadedCodelessLoveScripts ||= {};
     const closeBtn = document.createElement('button');
     closeBtn.className = 'cl-popout-close-btn';
     closeBtn.textContent = '✓ Done';
-    closeBtn.addEventListener('click', e => { e.stopPropagation(); setTokenMode(tokenEl, 'collapsed'); });
+    closeBtn.addEventListener('click', e => { 
+      e.stopPropagation(); 
+      setTokenMode(tokenEl, 'reverting'); 
+    });
     header.appendChild(closeBtn);
     panel.appendChild(header);
 
@@ -1819,7 +1822,11 @@ window.loadedCodelessLoveScripts ||= {};
         triggerRepack();
       }
 
-      setTokenMode(currentTokenEl, 'inline');
+      // Revert the token to its logic-appropriate default mode instead of hardcoding 'inline'.
+      const bubbleJson = JSON.parse(currentTokenEl.dataset.bubbleJson || '{}');
+      const finalMode = defaultTokenMode(opDef, bubbleJson, currentTokenEl);
+      setTokenMode(currentTokenEl, finalMode);
+
       panelEl.remove();
     });
   }
