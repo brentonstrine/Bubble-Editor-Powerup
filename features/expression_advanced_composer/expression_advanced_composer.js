@@ -437,6 +437,13 @@ window.loadedCodelessLoveScripts ||= {};
     zone.addEventListener('blur', () => {
       hideTexHint();
       hybridDropdownOpen = false;
+
+      // Ensure dropdown closes if we click elsewhere, but wait to allow option clicks
+      setTimeout(() => {
+        if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
+        hideDropdown();
+      }, 150);
+
       // If this was ephemeral (created by virtual slot) and still empty, remove it
       if (zone.dataset.ephemeral && !zone.textContent.trim()) {
         const pContainer = zone.closest('[data-text-expression]');
@@ -859,7 +866,7 @@ window.loadedCodelessLoveScripts ||= {};
 
     const rawBox = document.getElementById('cl-composer-raw-json');
     if (rawBox) {
-      rawBox.textContent = JSON.stringify(currentExpression, null, 2);
+      rawBox.value = JSON.stringify(currentExpression, null, 2);
     }
   }
 
