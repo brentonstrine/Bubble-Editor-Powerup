@@ -550,6 +550,9 @@ window.loadedCodelessLoveScripts ||= {};
     const pContainer = zone.closest('[data-text-expression]');
     if (!pContainer) return;
 
+    // Prevent the 'blur' event (triggered by replaceWith) from auto-removing the zone mid-replacement
+    delete zone.dataset.ephemeral;
+
     const cursorIndex = (zone.id && zone.dataset.ephemeral != null)
       ? 0
       : (window.__texCmdSlashCursor != null ? window.__texCmdSlashCursor : zone.textContent.length);
