@@ -71,12 +71,26 @@ window.loadedCodelessLoveScripts ||= {};
     };
 
     wrapper.appendChild(btn);
-    // Explicitly target the primary field labels we care about
-    const label = row.parentElement?.querySelector('#field_data_source_label, #field_text_label');
-    if (label) {
-      label.after(wrapper);
+
+    const conditionalContainer = target.closest('[data-conditional="true"][data-prop-name="condition"]');
+    if (conditionalContainer) {
+      const firstRow = conditionalContainer.firstElementChild;
+      if (firstRow && firstRow.classList.contains('property-editor-row')) {
+        wrapper.style.width = 'auto';
+        wrapper.style.marginTop = '0';
+        wrapper.style.justifyContent = 'flex-end';
+        firstRow.appendChild(wrapper);
+      } else {
+        conditionalContainer.appendChild(wrapper);
+      }
     } else {
-      row.appendChild(wrapper);
+      // Explicitly target the primary field labels we care about
+      const label = row.parentElement?.querySelector('#field_data_source_label, #field_text_label');
+      if (label) {
+        label.after(wrapper);
+      } else {
+        row.appendChild(wrapper);
+      }
     }
     row.setAttribute('data-cl-attached', 'true');
 
@@ -93,7 +107,8 @@ window.loadedCodelessLoveScripts ||= {};
     return [
       ...document.querySelectorAll('.text-composer'),
       ...document.querySelectorAll('.expression-composer > .expression-composer'),
-      ...document.querySelectorAll('.item-wrapper .expression-composer')
+      ...document.querySelectorAll('.item-wrapper .expression-composer'),
+      ...document.querySelectorAll('[data-conditional="true"] .expression-composer')
     ];
   }
 

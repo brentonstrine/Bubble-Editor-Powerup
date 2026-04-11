@@ -48,27 +48,43 @@ window.addEventListener('message', function(event) {
 
     // 4. Drill down into the specific property node
     if (propName && elementNode.exists()) {
-      const propertiesNode = elementNode.child('properties');
-      
-      if (propertiesNode.exists()) {
-        const propNode = propertiesNode.child(propName);
-        if (propNode.exists()) {
-          const rawJson = propNode.raw();
+      let activePropNode = null;
 
-          // DIAGNOSTIC LOOP: Log full element JSON
-          console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Load):", JSON.stringify(elementNode.raw(), null, 2));
-          
-          // Let the popup script know the data is ready
-          window.postMessage({
-            type: 'CL_ADVANCED_COMPOSER_DATA_READY',
-            expressionJson: rawJson
-          }, '*');
-        } else {
-          console.warn(`💙❤️ Property Node '${propName}' not found in 'properties'!`);
-          console.log("💙❤️ Available properties:", propertiesNode.child_names());
+      if (propName === "condition") {
+        console.log("💙❤️ We are targeting a conditional. Getting React Props to find the exact condition ID...");
+        // Ask the main script for the raw React props of the element to trace the ID
+        window.postMessage({ type: 'CL_ADVANCED_COMPOSER_FETCH_REACT_PROPS' }, '*');
+        
+        // As a fallback for right now, let's just grab the FIRST condition on the element
+        const conditionsNode = elementNode.child('states');
+        if (conditionsNode.exists()) {
+          const conditionIds = conditionsNode.child_names();
+          if (conditionIds.length > 0) {
+            console.log(`💙❤️ Fallback: Using condition ID: ${conditionIds[0]}`);
+            activePropNode = conditionsNode.child(conditionIds[0]).child('condition');
+            lastIdentifiedPropName = 'states.' + conditionIds[0] + '.condition'; // Store full path for saving
+          }
         }
       } else {
-        console.warn(`💙❤️ No 'properties' child found on the element node!`);
+        const propertiesNode = elementNode.child('properties');
+        if (propertiesNode.exists()) {
+          activePropNode = propertiesNode.child(propName);
+        }
+      }
+
+      // Let's force a dump of the raw element JSON so we can physically see where conditions are hiding
+      console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Load):", JSON.stringify(elementNode.raw(), null, 2));
+
+      if (activePropNode && activePropNode.exists()) {
+        const rawJson = activePropNode.raw();
+        
+        // Let the popup script know the data is ready
+        window.postMessage({
+          type: 'CL_ADVANCED_COMPOSER_DATA_READY',
+          expressionJson: rawJson
+        }, '*');
+      } else {
+        console.warn(`💙❤️ Target node for '${propName}' not found or doesn't exist!`);
       }
     }
 
@@ -95,7 +111,14 @@ window.addEventListener('message', function(event) {
       // Metadata is what triggers Bubble's reactive change propagation — it must be present.
       // Writing the full element back risks tripping Bubble's update pipeline on complex elements.
       const metadata = { intent: { name: 'Bubble Editor Powerup from Codeless Love' } };
-      const propNode = elementNode.child('properties').child(lastIdentifiedPropName);
+      
+      let propNode;
+      if (lastIdentifiedPropName.startsWith('states.')) {
+        const parts = lastIdentifiedPropName.split('.');
+        propNode = elementNode.child(parts[0]).child(parts[1]).child(parts[2]);
+      } else {
+        propNode = elementNode.child('properties').child(lastIdentifiedPropName);
+      }
 
       // DIAGNOSTIC: Pre-save state
       console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Pre-Save):", JSON.stringify(elementNode.raw(), null, 2));
