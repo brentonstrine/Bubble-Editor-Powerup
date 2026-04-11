@@ -442,7 +442,26 @@ window.loadedCodelessLoveScripts ||= {};
 
     zone.addEventListener('keydown', e => {
       e.stopPropagation();
-      if (e.key === 'Enter') { e.preventDefault(); return; }
+      if (e.key === 'Enter') { 
+        e.preventDefault(); 
+        if (hybridDropdownOpen) {
+          hideDropdown();
+          hybridDropdownOpen = false;
+          if (zone.textContent.trim()) {
+            delete zone.dataset.ephemeral;
+            const pContainer = zone.closest('[data-text-expression]');
+            if (pContainer) syncVirtualSlots(pContainer);
+            setTimeout(triggerRepack, 0);
+          }
+          // Move cursor to the end of the text node after committing
+          const sel = window.getSelection();
+          if (sel) {
+            sel.selectAllChildren(zone);
+            sel.collapseToEnd();
+          }
+        }
+        return; 
+      }
 
       // ⌘/ (Mac) or Ctrl+/ (Windows) → insert expression into non-empty literal
       const isCmdSlash = (e.key === '/' && (e.metaKey || e.ctrlKey));
