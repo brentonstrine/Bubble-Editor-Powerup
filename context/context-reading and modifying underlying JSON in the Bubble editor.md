@@ -113,6 +113,10 @@ Bubble violently compresses its JSON tree for production/app apps. Here are the 
 *   `%nm`: **Custom Name**. The user-defined string name of the node. 
 *   `%dn`: **Default Name**. The system-generated backup name. 
 *   `%x`: **Type**. The class designation of the node, frequently determining data types or expression behavior (e.g., `TextExpression`, `CurrentUser`, `Search`).
+*   `%iv`: **Is Visible**. Boolean flag controlling element visibility. Commonly found overriding standard visibility inside a conditionals `%p` array. (Uncompressed: `is_visible`)
+*   `%z`: **Z-Index**. Structural stacking order coordinate. (Uncompressed: `zindex`)
+*   `%cp`: **Current Parent**. Identifier for the structural parent node. (Uncompressed: `current_parent`)
+*   `%ei`: **Element ID**. The system string pointer used within workflows or dynamic targets referencing specific elements. (Uncompressed: `element_id`)
 
 ### Internal Quirks and Structural Observations
 *   **Search Constraints (`data_source.properties.constraints`)**: A Data Source of type `Search` stores its constraints as an indexed dictionary (e.g., `"0"`, `"1"`). Each constraint defines `key` (Field Name), `value` (The evaluated Bubble Expression), and `constraint_type` (e.g., "equals", "not contains").
