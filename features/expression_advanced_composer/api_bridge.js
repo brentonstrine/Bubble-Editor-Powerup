@@ -66,14 +66,77 @@ window.addEventListener('message', function(event) {
           }
         }
       } else {
-        const propertiesNode = elementNode.child('properties');
+        const propertiesNode = elementNode.child('%p');
         if (propertiesNode.exists()) {
           activePropNode = propertiesNode.child(propName);
+        } else {
+          // Fallback just in case some elements are uncompressed
+          activePropNode = elementNode.child('properties').child(propName);
         }
       }
 
       // Let's force a dump of the raw element JSON so we can physically see where conditions are hiding
       console.log("💙❤️ [DIAGNOSTIC] Full Element JSON (Load):", JSON.stringify(elementNode.raw(), null, 2));
+
+      // -----------------------------------------------------
+      // DYNAMIC ELEMENT EXTRACTION (DATA SOURCES)
+      // -----------------------------------------------------
+      let availableElements = [];
+      try {
+        console.log("💙❤️ [EXTRACTION] Starting Element Extraction...");
+        const pagePath = lastIdentifiedElementPath.split('.%el.')[0];
+        console.log("💙❤️ [EXTRACTION] Resolved Page Root Path:", pagePath);
+        
+        const pageNode = window.appquery().app().json.by_path(pagePath);
+        if (pageNode && pageNode.exists()) {
+          console.log("💙❤️ [EXTRACTION] Page Root Node found! Beginning recursive traversal...");
+          
+          function traverse(node, depthLabel) {
+            if (!node) return;
+            const cache = node.cache;
+            if (!cache) return;
+            
+            // Read compressed keys directly from memory (DO NOT use .raw())
+            const childId = cache['id'];
+            const type = cache['%x'];
+            const customName = cache['%p'] && cache['%p']['%nm'];
+            const defaultName = cache['%dn'];
+            const finalName = customName || defaultName || type;
+            
+            if (childId) {
+              availableElements.push({
+                label: finalName,
+                val: { 
+                  type: 'GetElement', 
+                  properties: { element_id: childId } 
+                }
+              });
+            }
+
+            // Traverse children using internal tree nodes instead of raw cache map
+            // This fixes Reusables, where the root cache may not explicitly hold %el
+            let elNode = node.child('%el');
+            if (!elNode || !elNode.exists()) elNode = node.child('elements');
+
+            if (elNode && elNode.exists()) {
+               const childKeys = elNode.child_names();
+               childKeys.forEach(childKey => {
+                  const childNode = elNode.child(childKey);
+                  traverse(childNode, depthLabel + " > " + finalName);
+               });
+            }
+          }
+          
+          traverse(pageNode, "Page Root");
+          console.log(`💙❤️ [EXTRACTION] Completed! Total elements found: ${availableElements.length}`);
+          console.log("💙❤️ [EXTRACTION] Final Array:", availableElements);
+        } else {
+          console.warn("💙❤️ [EXTRACTION] Failed to locate Page Root Node.");
+        }
+      } catch (extractionErr) {
+        console.error("💙❤️ [EXTRACTION ERROR]:", extractionErr);
+      }
+      // -----------------------------------------------------
 
       if (activePropNode && activePropNode.exists()) {
         const rawJson = activePropNode.raw();
@@ -81,7 +144,8 @@ window.addEventListener('message', function(event) {
         // Let the popup script know the data is ready
         window.postMessage({
           type: 'CL_ADVANCED_COMPOSER_DATA_READY',
-          expressionJson: rawJson
+          expressionJson: rawJson,
+          availableElements: availableElements
         }, '*');
       } else {
         console.warn(`💙❤️ Target node for '${propName}' not found or doesn't exist!`);

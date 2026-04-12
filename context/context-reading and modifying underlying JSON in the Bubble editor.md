@@ -36,6 +36,9 @@ Once you have a Node, you can traverse the tree using Bubble's internal navigati
 * **`node.exists()`**: Returns a boolean indicating if the current Node actually exists (useful for avoiding errors).
 * **`node.by_path('path.to.thing')`**: Jumps directly to a deeply nested Node using dot notation.
 
+> **💡 CRITICAL: The `.child()` Compression Trap**
+> When using `.child()` to navigate down the tree, you MUST use Bubble's internal compressed key names (e.g., `node.child('%p')`), *not* the decompressed names (e.g., `node.child('properties')`). Calling `.child()` with an uncompressed key will silently fail and return a non-existent node unless the element has already been manually decompressed via `.raw()`! 
+
 ### Utilizing Indexes for Fast Lookups
 Bubble maintains root-level maps to help you instantly find specific elements or pages without crawling the tree.
 You can access this index via `window.appquery().app().json.child('_index')`.
@@ -59,8 +62,9 @@ Bubble shrinks standard JSON keys into tiny symbols to save memory. Here is how 
 | **`%p`** | Properties (Coordinates, data sources) | `node.cache['%p']` |
 | **`%nm`** | Custom User-Defined Name | `node.cache['%p']['%nm']` (e.g., "Main Container") |
 | **`%x`** | Element Type | `node.cache['%x']` (e.g., "Group", "PageData") |
-| **`%el`** | Elements (Direct children IDs) | `node.cache['%el']` |
+| **`%el`** | Elements (Direct children object map) | `Object.keys(node.cache['%el'])` provides children internal keys |
 | **`%s1`** | Style | `node.cache['%s1']` |
+| **`%s`** or **`states`** | Conditionals (States) | `node.child('states')` holds Conditional rules, NOT `node.child('conditions')`! |
 | **`%h`, `%w`, `%l`, `%t`** | Height, Width, Left, Top | Inside `node.cache['%p']` |
 
 > **Warning:** Treat `node.cache` as strictly **Read-Only**. Modifying the cache directly will break Bubble's internal reactivity and fail to save to the database.
@@ -147,7 +151,15 @@ If an element has the class `CustomElement`, it is a Reusable Component. These o
 
 ---
 
-## 7. Developer Cheat Sheet
+## 8. Lessons Learned & Edge Cases
+
+### Reusable Element Extraction (Lazy Caching)
+When performing recursive extractions (like building an element list), you may find that **Reusable Elements** (often labeled `CustomDefinition` internally) do not populate their `%el` dictionary in the root `node.cache`. 
+* **The Symptom:** `node.cache['%el']` returns undefined, making it look like the Reusable has no children.
+* **The Solution:** Use `node.child('%el').child_names()` instead. This forces the engine to look up the children without requiring a heavy `.raw()` call, effectively "warming up" the cache for that specific branch. Use `%el` as the primary key and fallback to `elements` for older uncompressed app versions.
+---
+
+## 9. Developer Cheat Sheet
 
 **Get the ID of the currently selected element:**
 ```javascript

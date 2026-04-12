@@ -232,6 +232,7 @@ window.loadedCodelessLoveScripts ||= {};
   }
 
   let _cl_originalExpressionJson = null;
+  let AVAILABLE_PAGED_ELEMENTS = [];
 
   function openPopup(expressionJson) {
     _cl_originalExpressionJson = JSON.parse(JSON.stringify(expressionJson)); // deep clone
@@ -453,7 +454,7 @@ window.loadedCodelessLoveScripts ||= {};
       hybridDropdownOpen = false;
 
       // Ensure dropdown closes if we click elsewhere, but wait to allow option clicks
-      setTimeout(() => {
+      dropdownHideTimeout = setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
         hideDropdown();
       }, 150);
@@ -1114,9 +1115,12 @@ window.loadedCodelessLoveScripts ||= {};
     const referenceToken = isSlot ? anchor.previousElementSibling : anchor.previousElementSibling?.previousElementSibling;
 
     if (!referenceToken || !referenceToken.classList.contains('cl-token')) {
-      // First slot or first token -> Show Data Sources
       const title = isSlot ? "Data Sources" : "Replace Data Source";
       addDropdownItems(activeDropdown, title, DATA_SOURCES.map(d => ({ label: d.label, val: d })));
+      
+      if (typeof AVAILABLE_PAGED_ELEMENTS !== 'undefined' && AVAILABLE_PAGED_ELEMENTS.length > 0) {
+        addDropdownItems(activeDropdown, "Elements", AVAILABLE_PAGED_ELEMENTS);
+      }
     } else {
       // Subsequent slot/token -> Show Operators for left-hand token
       const leftType = getComputedType(referenceToken);
@@ -1414,7 +1418,7 @@ window.loadedCodelessLoveScripts ||= {};
     slot.addEventListener('blur', e => {
       slot.textContent = '+'; // Restore the '+'
 
-      setTimeout(() => {
+      dropdownHideTimeout = setTimeout(() => {
         if (!activeDropdown || activeDropdown.contains(document.activeElement)) return;
         hideDropdown();
       }, 150);
@@ -2338,6 +2342,14 @@ window.loadedCodelessLoveScripts ||= {};
   // Listen for the Data Ready event from api_bridge
   window.addEventListener('message', (event) => {
     if (event.data.type === 'CL_ADVANCED_COMPOSER_DATA_READY') {
+      console.log("💙❤️ [UI RECEIVER] Data Ready event received!");
+      console.log("💙❤️ [UI RECEIVER] Expression JSON Length:", JSON.stringify(event.data.expressionJson).length);
+      console.log("💙❤️ [UI RECEIVER] Available Elements Received:", event.data.availableElements?.length || 0);
+      if (event.data.availableElements) {
+        AVAILABLE_PAGED_ELEMENTS = event.data.availableElements;
+        console.log("💙❤️ [UI RECEIVER] First 3 Elements Sample:", event.data.availableElements.slice(0, 3));
+      }
+      
       openPopup(event.data.expressionJson);
     }
   });
