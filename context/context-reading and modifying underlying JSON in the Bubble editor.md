@@ -105,11 +105,20 @@ Bubble violently compresses its JSON tree for production/app apps. Here are the 
 *   `%el`: **Elements (Children)**. The container holding nested components. (Uncompressed: `elements`)
 *   `%gt`: **Group Type**. The data type designation for a container. (Uncompressed: `group_type`)
 *   `%3`: **Text Expression**. The root of a text content property. (Uncompressed: `text`)
-*   `%e`: **Entries**. The child entries inside a Text Expression. (Uncompressed: `entries`)
+*   `%e`: **Entries**. The child entries inside a Text Expression or generic expression chain. (Uncompressed: `entries`)
+*   `%ps`: **Placeholder**. Used heavily in inputs for placeholder definitions. (Uncompressed: `placeholder`)
+*   `%ds`: **Data Source**. The root object for binding an element's data context or search output. (Uncompressed: `data_source`)
+*   `%n`: **Next**. The crucial link in chaining Bubble expression logic. (Uncompressed: `next`)
 *   `%9i`: **Icon Name**. The specific icon string. (Uncompressed: `icon`)
 *   `%nm`: **Custom Name**. The user-defined string name of the node. 
 *   `%dn`: **Default Name**. The system-generated backup name. 
-*   `%x`: **Type**. The class designation of the node.
+*   `%x`: **Type**. The class designation of the node, frequently determining data types or expression behavior (e.g., `TextExpression`, `CurrentUser`, `Search`).
+
+### Internal Quirks and Structural Observations
+*   **Search Constraints (`data_source.properties.constraints`)**: A Data Source of type `Search` stores its constraints as an indexed dictionary (e.g., `"0"`, `"1"`). Each constraint defines `key` (Field Name), `value` (The evaluated Bubble Expression), and `constraint_type` (e.g., "equals", "not contains").
+*   **Auto-Binding Inputs**: Inputs store Auto-Binding setup internally, identifying the target field via `bind_field` and whether a success notification is shown to a specific element by `alert_element`.
+*   **Reusable Element Parameters**: When looking at a Reusable Element instantiated on a page, Bubble handles custom properties/parameters via keys that prefix with `param_` (e.g., `param_cnSRm`), linking the internal definition variable to the provided expression `OneOptionValue`. 
+*   **Context-Dependent/False-Positive Keys**: When mapping JSON keys visually, be careful of "primitive collisions". If `height: 0` and `min_width: 0`, naive value-matching might associate `%h` with `min_width` instead of `height`. Furthermore, depending on an element's configuration (Fixed vs Responsive width), numerical property usages may shift significance under the hood.
 
 ---
 
