@@ -31,6 +31,89 @@ window.loadedCodelessLoveScripts ||= {};
     // Track recently-fired containers to prevent duplicate fires
     // (Bubble can batch multiple class mutations in one tick)
     const recentlyFired = new WeakSet();
+    
+    // NEW: Schema Storage key
+    const SCHEMA_KEY = 'CL_AppSchema';
+    
+    /** 
+     * NEW: Schema Scanner
+     * Uses the appquery bridge to crawl user-defined definitions.
+     */
+    window.CL_ScanSchema = function() {
+        console.log("❤️ [Expression Analyzer] 🔍 Starting App Schema Scan...");
+        if (typeof window.appquery === 'undefined') {
+            console.error("❌ appquery not found. Are you in the Bubble Editor?");
+            return;
+        }
+
+        const schema = { customTypes: {}, optionSets: {} };
+        
+        try {
+            // 1. Scan Custom Data Types
+            const types = appquery.custom_types ? appquery.custom_types() : [];
+            types.forEach(typeNode => {
+                const node = typeNode.json;
+                const typeId = node.__name;
+                
+                // Greedy lookup for human name
+                const typeName = node.child('%nm').raw() || node.child('%dn').raw() || node.child('name').raw() || typeId;
+                
+                schema.customTypes[typeId] = {
+                    name: typeName,
+                    fields: {}
+                };
+
+                const fieldsBranch = node.child('fields');
+                if (fieldsBranch.exists()) {
+                    fieldsBranch.child_names().forEach(fId => {
+                        const fNode = fieldsBranch.child(fId);
+                        
+                        // Greedy lookup for field name
+                        let fName = fNode.child('%nm').raw() || fNode.child('%dn').raw() || fNode.child('name').raw() || fId;
+                        
+                        // Fallback type extraction from key (e.g. description_text -> text)
+                        let fType = fNode.child('type').raw();
+                        if (!fType && fId.includes('_')) {
+                            const parts = fId.split('_');
+                            fType = parts[parts.length - 1]; // Guess: the last part is the type
+                        }
+
+                        schema.customTypes[typeId].fields[fId] = {
+                            name: fName,
+                            type: fType || 'unknown',
+                            isList: fNode.child('is_list').raw() === true || fId.includes('_list_')
+                        };
+                    });
+                }
+            });
+
+            // 2. Scan Option Sets
+            const optionSets = appquery.option_sets ? appquery.option_sets() : [];
+            optionSets.forEach(osNode => {
+                const node = osNode.json;
+                const osId = node.__name;
+                const osName = node.child('%nm').raw() || node.child('%dn').raw() || node.child('name').raw() || osId;
+                
+                const optionsBranch = node.child('options');
+                schema.optionSets[osId] = {
+                    name: osName,
+                    options: optionsBranch.exists() ? optionsBranch.child_names().map(oId => {
+                        const oNode = optionsBranch.child(oId);
+                        return { 
+                            id: oId, 
+                            name: oNode.child('%nm').raw() || oNode.child('%dn').raw() || oNode.child('value').raw() || oId 
+                        };
+                    }) : []
+                };
+            });
+
+            localStorage.setItem(SCHEMA_KEY, JSON.stringify(schema));
+            console.log("❤️ [Expression Analyzer] ✅ Schema Scan Complete! Saved to localStorage.CL_AppSchema", schema);
+            return schema;
+        } catch (e) {
+            console.error("❌ Schema Scan Failed:", e);
+        }
+    };
 
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
@@ -75,6 +158,29 @@ window.loadedCodelessLoveScripts ||= {};
             `${validItems.length} valid items (${allItems.length} total)`,
             dropdown
         );
+                                                        
+        // ─── Phase 2.4: Type Categorization (Heuristics) ─────────────────
+        // Guess the return type of the LHO based on the options visible in this menu.
+        const CATEGORY_MAP = {
+            'Number':  ['>', '<', '≥', '≤', '+', '-', '*', '/', '^', 'rounded to', 'floor', 'ceiling'],
+            'Text':    [':uppercase', ':lowercase', ':capitalized words', ':split by...', 'append', 'truncated to'],
+            'List':    [':count', ':first item', ':last item', ':filter', ':sorted', ':unique elements', 'merged with', 'intersect with'],
+            'Boolean': ['and', 'or', 'is yes', 'is no']
+        };
+
+        function categorizeOptions(scraped) {
+            const labels = scraped.map(s => s.label);
+            const counts = { 'Number': 0, 'Text': 0, 'List': 0, 'Boolean': 0 };
+            
+            for (const [cat, triggers] of Object.entries(CATEGORY_MAP)) {
+                for (const trigger of triggers) {
+                    if (labels.includes(trigger)) counts[cat]++;
+                }
+            }
+            
+            const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+            return sorted[0][1] > 0 ? sorted[0][0] : 'Unknown';
+        }
 
         // ─── Phase 2.5: Scrape all visible labels immediately ─────────────
         // Capture the full set of valid labels right now at dropdown-open time,
@@ -91,7 +197,10 @@ window.loadedCodelessLoveScripts ||= {};
 
         // ─── Phase 3: Identify the Left-Hand Operand (LHO) ────────────────
         const lho = getLHO(target);
-        console.log('❤️ [Expression Analyzer] Phase 3 ✅ — LHO:', lho);
+        const returnCategory = categorizeOptions(scraped);
+        lho.returnCategory = returnCategory;
+
+        console.log(`❤️ [Expression Analyzer] Phase 3 ✅ — LHO:`, lho, `(Guessed Type: ${returnCategory})`);
 
         // Phase 2.5 persist (runs after Phase 3 so lho is available)
         recordAvailableOptions(lho, scraped);
@@ -101,11 +210,22 @@ window.loadedCodelessLoveScripts ||= {};
 
         // ─── Phase 4: Store context for delegated mousedown listener ──────
         const watchedSpot = target.closest('.spot');
+        const searchInput = target.querySelector('input');
+        let currentSearch = '';
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                currentSearch = e.target.value.trim();
+                // Update context dynamically so mousedown sees the latest typed value
+                if (activeContext) activeContext.search = currentSearch;
+            });
+        }
+
         if (watchedSpot) {
             // Anchor to div.editor.basic — stable grandparent that survives DOM rewrites.
             const editorRoot = target.closest('.editor.basic') ?? watchedSpot.parentElement;
             console.log('❤️ [Expression Analyzer] Phase 4.1 ✅ watchedSpot', watchedSpot);
-            activeContext = { spot: watchedSpot, composerRoot: editorRoot, lho };
+            activeContext = { spot: watchedSpot, composerRoot: editorRoot, lho, search: currentSearch };
         } else {
             console.log('❤️ [Expression Analyzer] Phase 4.1 ❌ no watchedSpot found');
         }
@@ -287,9 +407,21 @@ window.loadedCodelessLoveScripts ||= {};
 
     function lhoKey(lho) {
         if (!lho || lho.error) return null;
-        if (lho.operatorKey)   return `op:${lho.operatorKey}`;
-        if (lho.datasourceKey) return `ds:${lho.datasourceKey}`;
-        return null;
+        let base = null;
+        if (lho.operatorKey)   base = `op:${lho.operatorKey}`;
+        else if (lho.datasourceKey) base = `ds:${lho.datasourceKey}`;
+        
+        if (!base) return null;
+
+        // Pattern Normalization: Strip specific type IDs for generalization
+        // (e.g. current_order_custom_12345x67890 -> current_order_custom_*)
+        if (base.includes('_custom_')) {
+            lho.isCustomField = true;
+            lho.normalizedPattern = base.replace(/_custom_.*$/, '_custom_*');
+            lho.isList = base.includes('_list_custom_');
+        }
+
+        return base;
     }
     function loadGraph() {
         try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
@@ -303,6 +435,12 @@ window.loadedCodelessLoveScripts ||= {};
         if (!key) return;
         const graph = loadGraph();
         if (!graph[key]) graph[key] = { lho, options: {} };
+        
+        // Update return category if we have a better guess now
+        if (lho.returnCategory && lho.returnCategory !== 'Unknown') {
+            graph[key].lho.returnCategory = lho.returnCategory;
+        }
+
         for (const { label, disabled } of scraped) {
             if (!graph[key].options[label]) {
                 graph[key].options[label] = { label, operatorKey: null, datasourceKey: null, disabled };
@@ -311,23 +449,32 @@ window.loadedCodelessLoveScripts ||= {};
         saveGraph(graph);
         console.log(`❤️ [Expression Analyzer] Phase 2.5 ✅ [${key}] — ${scraped.length} options recorded`);
     }
-
+                                                        
     /** Phase 4.5 — enrich a label with its internal operator/datasource key after a click. */
-    function recordSelectedKey(lho, uiLabel, operatorKey, datasourceKey, isLeaf = false) {
+    function recordSelectedKey(lho, uiLabel, operatorKey, datasourceKey, isLeaf = false, searchAlias = '') {
         const key = lhoKey(lho);
         if (!key) return;
         const graph = loadGraph();
         if (!graph[key]) graph[key] = { lho, options: {} };
         const existing = graph[key].options[uiLabel] || {};
+        
+        // Only update searchAlias if we actually had one and it's longer than what we have
+        const currentAliases = existing.searchAliases || [];
+        if (searchAlias && !currentAliases.includes(searchAlias)) {
+            currentAliases.push(searchAlias);
+        }
+
         graph[key].options[uiLabel] = {
             label: uiLabel,
             operatorKey:   operatorKey   || existing.operatorKey   || null,
             datasourceKey: datasourceKey || existing.datasourceKey || null,
             disabled: existing.disabled || false,
             clicked: true,
+            isLeaf: isLeaf,
+            searchAliases: currentAliases
         };
         saveGraph(graph);
-        console.log(`❤️ [Expression Analyzer] Phase 4.5 ✅ [${key}] "${uiLabel}" → op:${operatorKey} ds:${datasourceKey} leaf:${isLeaf}`);
+        console.log(`❤️ [Expression Analyzer] Phase 4.5 ✅ [${key}] "${uiLabel}" → op:${operatorKey} ds:${datasourceKey} isLeaf:${isLeaf} (alias: ${searchAlias})`);
     }
 
     // ─── Phase 4: Single delegated mousedown listener ────────────────────────────
@@ -349,7 +496,7 @@ window.loadedCodelessLoveScripts ||= {};
         console.log('❤️ [Expression Analyzer] Phase 4.4 ✅ mousedown on item:', uiLabel);
 
         // Destructure activeContext and immediately clear to avoid re-entry.
-        const { composerRoot, lho } = activeContext;
+        const { composerRoot, lho, search } = activeContext;
         activeContext = null;
 
         // ── Phase 4.5: Snapshot-diff approach ────────────────────────────────────
@@ -381,12 +528,12 @@ window.loadedCodelessLoveScripts ||= {};
                 const beforeCount = before.get(key) || 0;
                 if (afterCount > beforeCount) {
                     const [opKey, dsKey] = key.split('|');
-                    recordSelectedKey(lho, uiLabel, opKey || null, dsKey || null, false);
+                    recordSelectedKey(lho, uiLabel, opKey || null, dsKey || null, false, search);
                     return;
                 }
             }
             console.log('❤️ [Expression Analyzer] Phase 4.5 ℹ️ No new spot key found 300ms after click (likely a literal value). Before:', before, 'After:', after);
-            recordSelectedKey(lho, uiLabel, null, null, true);
+            recordSelectedKey(lho, uiLabel, null, null, true, search);
         }, 300);
 
     }, true /* capture phase */);
