@@ -384,10 +384,12 @@ body {
     line-height: 1em;
   }
 
-  .cl-dropdown .cl-tree-glyph {
-    opacity: 0.35;
+  .cl-dropdown .cl-tree-glyph.cl-tree-glyph {
     white-space: pre;
-    font-family: 'Open Sans', sans-serif;
+    font-family: monospace;
+    line-height: 1.2em;
+    opacity: 1;
+    color: #626262;
   }
 
   .cl-dropdown .cl-option:hover,

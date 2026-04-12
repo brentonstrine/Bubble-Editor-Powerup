@@ -1117,7 +1117,7 @@ window.loadedCodelessLoveScripts ||= {};
     if (!referenceToken || !referenceToken.classList.contains('cl-token')) {
       const title = isSlot ? "Data Sources" : "Replace Data Source";
       addDropdownItems(activeDropdown, title, DATA_SOURCES.map(d => ({ label: d.label, val: d })));
-      
+
       if (typeof AVAILABLE_PAGED_ELEMENTS !== 'undefined' && AVAILABLE_PAGED_ELEMENTS.length > 0) {
         addDropdownItems(activeDropdown, "Elements", AVAILABLE_PAGED_ELEMENTS);
       }
@@ -1158,33 +1158,22 @@ window.loadedCodelessLoveScripts ||= {};
     items.forEach(item => {
       const option = document.createElement('div');
       option.className = 'cl-option';
-      
+
       if (item.treeGlyph) {
-          option.classList.add('cl-option-tree');
-          const glyphSpan = document.createElement('span');
-          glyphSpan.className = 'cl-tree-glyph';
-          
-          for (let char of item.treeGlyph) {
-              if (char === ' ') {
-                  const inv = document.createElement('span');
-                  inv.style.visibility = 'hidden';
-                  inv.textContent = '┃';
-                  glyphSpan.appendChild(inv);
-              } else {
-                  glyphSpan.appendChild(document.createTextNode(char));
-              }
-          }
-          
-          option.appendChild(glyphSpan);
-          
-          const labelSpan = document.createElement('span');
-          labelSpan.style.marginLeft = '4px';
-          labelSpan.textContent = item.rawLabel || item.label;
-          option.appendChild(labelSpan);
+        option.classList.add('cl-option-tree');
+        const glyphSpan = document.createElement('span');
+        glyphSpan.className = 'cl-tree-glyph';
+        glyphSpan.textContent = item.treeGlyph;
+        option.appendChild(glyphSpan);
+
+        const labelSpan = document.createElement('span');
+        labelSpan.style.marginLeft = '4px';
+        labelSpan.textContent = item.rawLabel || item.label;
+        option.appendChild(labelSpan);
       } else {
-          option.textContent = item.label;
+        option.textContent = item.label;
       }
-      
+
       option.addEventListener('mousedown', e => e.preventDefault());
       option.addEventListener('click', (e) => {
         e.preventDefault();
@@ -2390,7 +2379,7 @@ window.loadedCodelessLoveScripts ||= {};
         AVAILABLE_PAGED_ELEMENTS = event.data.availableElements;
         console.log("💙❤️ [UI RECEIVER] First 3 Elements Sample:", event.data.availableElements.slice(0, 3));
       }
-      
+
       openPopup(event.data.expressionJson);
     }
   });
