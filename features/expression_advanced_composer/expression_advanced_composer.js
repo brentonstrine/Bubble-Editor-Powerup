@@ -1158,7 +1158,33 @@ window.loadedCodelessLoveScripts ||= {};
     items.forEach(item => {
       const option = document.createElement('div');
       option.className = 'cl-option';
-      option.textContent = item.label;
+      
+      if (item.treeGlyph) {
+          option.classList.add('cl-option-tree');
+          const glyphSpan = document.createElement('span');
+          glyphSpan.className = 'cl-tree-glyph';
+          
+          for (let char of item.treeGlyph) {
+              if (char === ' ') {
+                  const inv = document.createElement('span');
+                  inv.style.visibility = 'hidden';
+                  inv.textContent = '┃';
+                  glyphSpan.appendChild(inv);
+              } else {
+                  glyphSpan.appendChild(document.createTextNode(char));
+              }
+          }
+          
+          option.appendChild(glyphSpan);
+          
+          const labelSpan = document.createElement('span');
+          labelSpan.style.marginLeft = '4px';
+          labelSpan.textContent = item.rawLabel || item.label;
+          option.appendChild(labelSpan);
+      } else {
+          option.textContent = item.label;
+      }
+      
       option.addEventListener('mousedown', e => e.preventDefault());
       option.addEventListener('click', (e) => {
         e.preventDefault();
@@ -2257,7 +2283,7 @@ window.loadedCodelessLoveScripts ||= {};
     if (token.type === 'GetElement') {
       const elementId = token.properties?.element_id;
       const foundMatch = AVAILABLE_PAGED_ELEMENTS.find(el => el.val?.properties?.element_id === elementId);
-      return foundMatch ? foundMatch.label : "Element (" + (elementId || "?") + ")";
+      return foundMatch ? (foundMatch.rawLabel || foundMatch.label) : "Element (" + (elementId || "?") + ")";
     }
 
     if (token.type === 'Message') {

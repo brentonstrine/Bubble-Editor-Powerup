@@ -109,7 +109,7 @@ window.addEventListener('message', function(event) {
         if (rootNode && rootNode.exists()) {
           const discovered = new Set();
           
-          function traverse(node, depth = 0) {
+          function traverse(node, prefix = "", isLast = true, depth = 0) {
             if (!node || !node.exists()) return;
             const cache = node.cache;
             if (!cache) return;
@@ -122,7 +122,24 @@ window.addEventListener('message', function(event) {
               let customName = cache['%nm']; // Custom user-defined name
               let defaultName = cache['%dn']; // Bubble default name
               
-              let displayName = customName || defaultName || type;
+              // Smart fallbacks based on inner properties
+              let secondaryName = null;
+              const props = cache['%p'] || {};
+              if (type === 'Text') {
+                  const t = props['text'] || props['text_for_display'] || props['content'];
+                  let rawText = "";
+                  if (typeof t === 'string') rawText = t;
+                  else if (t && t.entries) rawText = Object.values(t.entries).map(e => (typeof e === 'string' ? e : "")).join(" ");
+                  if (rawText.trim()) secondaryName = "Text " + rawText.trim().substring(0, 20).replace(/\s+/g, ' ');
+              } else if (type === 'Icon' || type === 'MaterialIcon') {
+                  const ico = props['icon'] || props['material_icon'] || props['icon_name'];
+                  if (typeof ico === 'string') secondaryName = "Icon " + ico;
+              } else if (['Group', 'RepeatingGroup', 'Popup', 'FloatingGroup'].includes(type)) {
+                  const subtype = props['group_type'] || props['type_of_thing'] || props['content_type'] || props['type'];
+                  if (typeof subtype === 'string' && !subtype.includes('_default_')) secondaryName = type + " " + subtype;
+              }
+
+              let displayName = customName || secondaryName || defaultName || type;
               if (type === 'CustomDefinition' && !customName) {
                   displayName = "Reusable: " + (cache['__name'] || "Element");
               }
@@ -130,31 +147,45 @@ window.addEventListener('message', function(event) {
               // Strictly traverse element containers to maintain "Order of Appearance"
               let elNode = node.child('%el');
               if (!elNode || !elNode.exists()) elNode = node.child('elements');
-              
               const hasChildren = elNode && elNode.exists() && elNode.child_names().length > 0;
-              const prefix = hasChildren ? "▾ " : "  ";
-              const indent = "\u00A0\u00A0".repeat(depth);
+
+              // Tree visual build: Depth 0 (Page/RU) gets no prefix
+              let treeLine = "";
+              if (depth > 0) {
+                  let branch = isLast ? "┗" : "┣";
+                  let connector = hasChildren ? "┳" : "━";
+                  treeLine = prefix + branch + connector;
+              }
 
               availableElements.push({
-                label: indent + prefix + displayName,
+                label: treeLine + " " + displayName, 
+                treeGlyph: treeLine,           
+                rawLabel: displayName,         
                 val: { 
                   type: 'GetElement', 
                   properties: { element_id: childId } 
                 }
               });
 
+              // Prepare the prefix for child levels
+              let childPrefix = prefix;
+              if (depth > 0) {
+                  childPrefix += isLast ? "  " : "┃ "; 
+              }
+
               if (hasChildren) {
                 const childKeys = elNode.child_names();
-                childKeys.forEach(key => {
+                childKeys.forEach((key, index) => {
                     const child = elNode.child(key);
-                    traverse(child, depth + 1);
+                    const isLastChild = (index === childKeys.length - 1);
+                    traverse(child, childPrefix, isLastChild, depth + 1);
                 });
               }
             }
           }
           
-          // Start traversal (depth 0)
-          traverse(rootNode, 0);
+          // Start traversal (depth 0, last item of the universe)
+          traverse(rootNode, "", true, 0);
 
           console.log(`💙❤️ [EXTRACTION] Completed! Total elements: ${availableElements.length}`);
         } else {
