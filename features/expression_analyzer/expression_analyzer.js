@@ -364,7 +364,15 @@ window.loadedCodelessLoveScripts ||= {};
         else if (baseKey.includes('_list_date'))    generic = 'cat:List.Date';
         else if (baseKey.includes('_date'))         generic = 'cat:Single.Date';
         else if (baseKey.includes('_list_user'))    generic = 'cat:List.User';
-        else if (baseKey === 'Search')              generic = 'cat:List.Custom'; // Searches default to list of custom
+        else if (baseKey === 'Search')              generic = 'cat:List.Custom';
+
+        // Fallback to broad categories based on identified return type if specific suffix is missing
+        if (!generic && lho.returnCategory) {
+            if (lho.returnCategory === 'List')          generic = 'cat:List.Custom';
+            else if (lho.returnCategory === 'Single')   generic = 'cat:Single.Custom';
+            else if (lho.returnCategory === 'Text')     generic = 'cat:Single.Text';
+            else if (lho.returnCategory === 'Number')   generic = 'cat:Single.Number';
+        }
 
         return { specific, generic };
     }
@@ -408,6 +416,9 @@ window.loadedCodelessLoveScripts ||= {};
                     genericEntry.options[label] = { label, clicked: false, lhoSources: [] };
                 }
                 const genOpt = genericEntry.options[label];
+                // Migration: Ensure lhoSources exists for data from older versions
+                if (!genOpt.lhoSources) genOpt.lhoSources = [];
+                
                 if (!genOpt.lhoSources.includes(keys.specific)) {
                     genOpt.lhoSources.push(keys.specific);
                     // Cap sources array to prevent bloat, but enough to prove universality
@@ -429,8 +440,11 @@ window.loadedCodelessLoveScripts ||= {};
         [keys.specific, keys.generic].forEach(key => {
             if (!key) return;
             if (!graph[key]) graph[key] = { lho, options: {} };
-            const existing = graph[key].options[uiLabel] || {};
+            const existing = graph[key].options[uiLabel] || { label: uiLabel, clicked: false, lhoSources: [] };
             
+            // Migration fix for clicking old data
+            if (key === keys.generic && !existing.lhoSources) existing.lhoSources = [keys.specific];
+
             const currentAliases = existing.searchAliases || [];
             if (searchAlias && !currentAliases.includes(searchAlias)) {
                 currentAliases.push(searchAlias);
