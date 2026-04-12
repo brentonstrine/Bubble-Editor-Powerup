@@ -127,30 +127,29 @@ window.addEventListener('message', function(event) {
                   displayName = "Reusable: " + (cache['__name'] || "Element");
               }
 
-              // Apply Indentation (No spaces between hyphens)
-              const indent = "-".repeat(depth);
+              // Strictly traverse element containers to maintain "Order of Appearance"
+              let elNode = node.child('%el');
+              if (!elNode || !elNode.exists()) elNode = node.child('elements');
+              
+              const hasChildren = elNode && elNode.exists() && elNode.child_names().length > 0;
+              const prefix = hasChildren ? "▾ " : "  ";
+              const indent = "\u00A0\u00A0".repeat(depth);
 
               availableElements.push({
-                label: indent + displayName,
+                label: indent + prefix + displayName,
                 val: { 
                   type: 'GetElement', 
                   properties: { element_id: childId } 
                 }
               });
-            }
 
-            // Strictly traverse element containers to maintain "Order of Appearance"
-            // We search for both compressed '%el' and readable 'elements' keys
-            let elNode = node.child('%el');
-            if (!elNode || !elNode.exists()) elNode = node.child('elements');
-
-            if (elNode && elNode.exists()) {
+              if (hasChildren) {
                 const childKeys = elNode.child_names();
                 childKeys.forEach(key => {
                     const child = elNode.child(key);
-                    // Increment depth for children of this container
                     traverse(child, depth + 1);
                 });
+              }
             }
           }
           
