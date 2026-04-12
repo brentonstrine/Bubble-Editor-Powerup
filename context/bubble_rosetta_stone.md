@@ -65,12 +65,95 @@ Unlike most property accessors which use an `operatorKey`, the `'s link` propert
 
 ---
 
-## 3. Datasource Roots
+## 3. Expression Root Types
 
-| Human Label | internal Key | Category |
+These are the **starting points** for any expression chain. Each defines the initial context or data source.
+
+| Root Type | Human Label | Key Properties | Notes |
+|:---|:---|:---|:---|
+| `CurrentUser` | Current User | — | The logged-in user |
+| `ThisElement` | This [Element] | — | The element itself (e.g., "This Group's data") |
+| `GetElement` | [Element Name] | `properties.element_id` | References another element by ID |
+| `Search` | Do a search for | `properties.constraints`, `properties.type_to_find`, `properties.sort_field`, `properties.descending` | "Do a Search for" query |
+| `PageData` | Current page... | `properties.name` | Page-level data (e.g., "Current Page Width") |
+| `Breakpoint` | [Breakpoint Name] | `properties.breakpoint_id` | A responsive breakpoint reference |
+| `OneOptionValue` | Get an option | `properties.option_set`, `properties.option_value` | A static Option Set value. Does NOT support chaining. |
+| `OptionValue` | Get an option | `properties.option_set`, `properties.option_value` | An Option Set value that supports chaining (e.g., getting `.id0` from an option) |
+| `PrimitiveLiteral` | (inline value) | `properties.value`, `properties.btype` (e.g., `sys.bool`) | A hardcoded literal value |
+| `TextExpression` | (inline text) | `entries` (indexed dictionary of strings and/or expression objects) | Text content with dynamic insertions |
+| `GetParamFromUrl` | Get data from page URL | `properties.parameter_name` (a TextExpression) | URL parameter accessor |
+| `ElementParent` | Parent Group's... | — | Parent element's data source (shorthand). Used inside RG CELL groups to access "Current Cell's Thing". |
+| `ArbitraryText` | Arbitrary text | — | A freeform text literal entry point |
+
+---
+
+## 4. Message Names (Method Chaining)
+
+`Message` is the **universal chaining type**. Every operation that follows a root type (or another Message) is a `Message` node. Its `name` property defines the operation.
+
+### Field Accessors
+These are standard property lookups on a data record. Named after the internal field key:
+
+| Example Name | What it accesses |
+|:---|:---|
+| `email` | User's email |
+| `_id` | Unique ID of any record |
+| `Slug` | Slug field |
+| `Created Date` | Creation timestamp |
+| `Modified Date` | Last-modified timestamp |
+| `team_custom_team` | Field `team` of type `custom.team` (single ref) |
+| `current_seat_custom_seat` | Field `current_seat` of type `custom.seat` (single ref) |
+| `featuresets_list_custom_featureset` | Field `featuresets`, a list of type `custom.featureset` |
+
+> **General Naming Rule:** `{fieldname}_custom_{typename}` for single refs; `{fieldname}_list_custom_{typename}` for list refs.
+
+### Data Retrieval
+| Name | Human Label |
+|:---|:---|
+| `get_group_data` | Gets a group element's data source |
+| `get_list_data` | Gets a list element's data |
+
+### Comparisons
+These terminate a chain with a boolean result, or transition to an RHO argument slot.
+
+| Name | Human Label |
+|:---|:---|
+| `equals` | is |
+| `not_equals` | is not |
+| `less_than` | < |
+| `less_or_equal_than` | ≤ |
+| `is_empty` | is empty |
+| `is_not_empty` | is not empty |
+| `contains` | contains |
+| `not_contains` | doesn't contain |
+| `logged_in` | is logged in |
+| `not_logged_in` | is logged out |
+
+### Boolean Logic
+| Name | Human Label | Notes |
 |:---|:---|:---|
-| `Current User` | `CurrentUser` | Root |
-| `Get an element` | `GetElement` | Root |
-| `Arbitrary text` | `ArbitraryText` | Root |
-| `Do a search for` | `Search` | Root |
-| `Get data from URL` | `PageData` | Root |
+| `and_` | and | Requires a boolean LHO (often preceded by `.is_true`). Takes a full expression as its `args`. |
+| `or_` | or | Same pattern as `and_`. |
+
+### Evaluators
+| Name | Human Label |
+|:---|:---|
+| `is_true` | is true |
+| `is_hovered` | is hovered |
+
+### List Operations
+| Name | Human Label |
+|:---|:---|
+| `merged_with` | merged with |
+| `unique` | :unique elements |
+| `sorted` | :sorted |
+| `filtered` | :filtered |
+| `count` | :count |
+| `first_element` | :first item |
+| `specific_item` | :item # |
+
+### ID Accessors
+| Name | Human Label | Notes |
+|:---|:---|:---|
+| `id0` | (unique id) | Specifically for unique IDs of records or options; used when chaining off `OptionValue` |
+| `_id` | 's unique id | Standard unique ID property accessor on a record |
