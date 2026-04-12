@@ -156,32 +156,27 @@ In JSON, this looks like:
 }
 ```
 
-### Known Root Types (Expression Starting Points)
-| Root Type | Description | Key Properties |
-| :--- | :--- | :--- |
-| `CurrentUser` | The logged-in user | — |
-| `ThisElement` | The element itself (e.g., "This Group's data") | — |
-| `GetElement` | References another element by ID | `properties.element_id` |
-| `Search` | "Do a Search for" query | `properties.constraints`, `properties.type_to_find`, `properties.sort_field`, `properties.descending` |
-| `PageData` | Page-level data (e.g., "Current Page Width") | `properties.name` |
-| `Breakpoint` | A responsive breakpoint reference | `properties.breakpoint_id` |
-| `OneOptionValue` | A static Option Set value | `properties.option_set`, `properties.option_value` |
-| `OptionValue` | An Option Set value that supports chaining | Used when getting a property (like `.id0`) from an option. |
-| `PrimitiveLiteral` | A hardcoded literal value | `properties.value`, `properties.btype` (e.g., `sys.bool`) |
-| `TextExpression` | Text content with dynamic insertions | `entries` (indexed dictionary of strings and/or expression objects) |
-| `GetParamFromUrl` | URL parameter accessor | `properties.parameter_name` (a TextExpression) |
-| `ElementParent` | Parent element's data source (shorthand) | — |
+### Known Root Types & Global Operations
+For a complete, searchable dictionary of **Human Labels ↔ Internal Keys**, refer to the [Bubble Rosetta Stone](file:///Users/dev/Documents/GitHub/CodelessLove/Bubble-Powerup/context/bubble_rosetta_stone.md).
 
-### Message Names (Method Chaining)
-`Message` is the universal chaining type. Its `name` property defines the operation. Message names follow a naming convention that **encodes field names and their data types**:
+#### Expression Starting Points (Roots)
+Common roots include `CurrentUser`, `GetElement`, `Search`, `PageData`, and `PrimitiveLiteral`. Each defines the initial context for the chain.
 
-*   **Field accessors**: `email`, `_id` (Unique ID), `team_custom_team` (field `team` of type `custom.team`), `current_seat_custom_seat`, `featuresets_list_custom_featureset` (list field)
-*   **Data retrieval**: `get_group_data`, `get_list_data`
-*   **Comparisons**: `equals`, `less_than`, `less_or_equal_than`, `is_empty`, `is_not_empty`, `contains`, `not_contains`, `not_logged_in`
-*   **Boolean logic**: `and_` (requires a boolean input; often preceded by `.is_true`)
-*   **Evaluators**: `is_true`, `is_hovered`
-*   **List operations**: `merged_with`, `unique`, `sorted`, `filtered`, `count`
-*   **ID accessors**: `id0` (specifically for unique IDs of records or options)
+#### Method Chaining (Messages)
+The `Message` type is used for nearly every operation after the root. Its `name` property (e.g., `equals`, `count`, `first_element`) defines the logic. 
+
+> **Naming Rule:** Method names often encode field names and their data types (e.g., `tags_list_option_featureset_tag`).
+
+### Type-Specific Logic: Boolean vs. Yes/No
+Bubble enforces a strict separation between logical "Booleans" and database "Yes/No" types. This determines what operators can follow them:
+
+*   **Boolean Chain (internal states):** Supports logical operators like `and` or `or`.
+*   **Yes/No Chain (DB types):** Supports comparison operators like `is yes`, `is no`, and `is not`.
+
+### Custom Field Naming Grammar
+Internal keys for user-defined fields follow a predictable pattern:
+*   **Single Reference:** `{fieldname}_custom_{typename}`
+*   **List Reference:** `{fieldname}_list_custom_{typename}`
 
 ### Boolean Chaining Flow
 When multiple conditions are joined, Bubble uses a pipeline flow. For example, "If [ParamX] is true AND [This Element] is hovered":
