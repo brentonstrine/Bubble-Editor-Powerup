@@ -117,7 +117,7 @@ Bubble violently compresses its JSON tree for production/app apps. Here are the 
 *   `%9i`: **Icon Name**. The specific icon string. (Uncompressed: `icon`)
 *   `%nm`: **Custom Name**. The user-defined string name of the node. 
 *   `%dn`: **Default Name**. The system-generated backup name. 
-*   `%x`: **Type**. The class designation of the node, frequently determining data types or expression behavior (e.g., `TextExpression`, `CurrentUser`, `Search`).
+*   `%x`: **Type**. The class designation of the node, frequently determining data types or expression behavior (e.g., `TextExpression`, `CurrentUser`, `Search`, `CustomElement`).
 *   `%iv`: **Is Visible**. Boolean flag controlling element visibility. Commonly found overriding standard visibility inside a conditionals `%p` array. (Uncompressed: `is_visible`)
 *   `%z`: **Z-Index**. Structural stacking order coordinate. (Uncompressed: `zindex`)
 *   `%cp`: **Current Parent**. Identifier for the structural parent node. (Uncompressed: `current_parent`)
