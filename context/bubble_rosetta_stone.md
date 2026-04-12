@@ -45,15 +45,28 @@ Bubble maintains a strict distinction between "Booleans" (usually internal state
 *   **Yes/No Type** (`uses_pw`, `email_confirmed`): 
     *   **Available Chaining:** `is yes`, `is no`, `is not`, `:formatted as text`, `:formatted as number`, `:formatted as JSON-safe`.
 
-### Custom Field Naming Convention
-Internal keys for user-defined fields follow a strict pattern to prevent collisions with built-in properties.
+### Internal Resource Naming Grammar
+Internal keys for user-defined fields follow a predictable "Suffix Grammar" that allows us to infer the data type directly from the key.
 
-| Field Type | Pattern | Example |
+| Field Type | Suffix Pattern | Example from Dump |
 |:---|:---|:---|
-| **Single Ref** | `{field_name}_custom_{type_name}` | `current_order_custom_order` |
-| **List Ref** | `{field_name}_list_custom_{type_name}` | `bookmarks_list_custom_artwork` |
+| **Text** | `_[name]_text` | `description_text` |
+| **Number** | `_[name]_number` | `ounces__weight__number` |
+| **Yes/No** | `_[name]_boolean` | `is_published_boolean` |
+| **Date** | `_[name]_date` | `scheduled_date_date` |
+| **Image**| `_[name]_image` | `primary_image_image` |
+| **File** | `_[name]_file` | `video_description_file` |
+| **User** | `_[name]_user` | `recipients_user` |
+| **Option Set** | `_os_[os_id]` | `type_option_os_event_type` |
+| **Custom Ref** | `_custom_[type_id]` | `parent_event_custom_event` |
+| **Custom List** | `_list_custom_[type_id]` | `artwork_list_custom_artwork` |
 
-*Note: The internal key often contains the specific Bubble-generated ID for the custom type.*
+#### The "Double Underscore" Collision Rule
+Bubble uses a double underscore (`__`) as a separator when a field name might collide with a type name or a reserved word. 
+*   **Example**: `creator__user__user` (Field "Creator" of type "User")
+*   **Example**: `owner__artist__custom_studio` (Field "Owner" of type "Artist")
+
+This pattern is a critical marker for the composer to distinguish between a property name and its type-suffix.
 
 ### Comparison Chains and Literals
 When a comparison operator like `equals` (`is`) or `not_equals` (`is not`) is used, the "options" captured by the analyzer often include **Literal Values** (e.g., `"4"`, `"1"`, or specific element names). 
@@ -104,6 +117,9 @@ These are standard property lookups on a data record. Named after the internal f
 | `team_custom_team` | Field `team` of type `custom.team` (single ref) |
 | `current_seat_custom_seat` | Field `current_seat` of type `custom.seat` (single ref) |
 | `featuresets_list_custom_featureset` | Field `featuresets`, a list of type `custom.featureset` |
+| `is_published_boolean` | A boolean (Yes/No) field |
+| `recipients_actual_list_text` | A list of text strings |
+| `stripe_status_touched______list_date`| A complex list of dates with internal collision protection |
 
 > **General Naming Rule:** `{fieldname}_custom_{typename}` for single refs; `{fieldname}_list_custom_{typename}` for list refs.
 
