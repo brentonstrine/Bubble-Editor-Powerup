@@ -71,7 +71,12 @@ This pattern is a critical marker for the composer to distinguish between a prop
 ### Comparison Chains and Literals
 When a comparison operator like `equals` (`is`) or `not_equals` (`is not`) is used, the "options" captured by the analyzer often include **Literal Values** (e.g., `"4"`, `"1"`, or specific element names). 
 
-This confirms that in the underlying JSON, Literals are not necessarily distinct "types" in the root of the next node, but are often seamlessly integrated into the arguments of the operator. In the Expression Composer UI, these should be rendered as "terminal" nodes that allow direct text input.
+This confirms that in the underlying JSON, Literals are not necessarily distinct "types" in the root of the next node, but are often seamlessly integrated into the arguments of the operator. 
+
+### The "Argument Node" Pattern (Literals)
+When an operator (like `:item #` or `contains`) requires a value, Bubble treats the next step in the chain as an **Argument Node**.
+*   **Terminal Leafs**: If a user types a value (e.g., "4") or selects a static thing, the Analyzer identifies this as `isLeaf: true`.
+*   **UI Hint**: When `isLeaf` is true for a specific operator, the Expression Composer should render an **Input Field** instead of a **Dropdown**.
 
 ### The `'s link` Anomaly
 Unlike most property accessors which use an `operatorKey`, the `'s link` property often returns a `datasourceKey: "Message"`. This indicates that Bubble treats "Link" as a starting point for a complex expression chain (similar to a Search or PageData) rather than a simple field lookup.
@@ -166,7 +171,7 @@ These terminate a chain with a boolean result, or transition to an RHO argument 
 | `filtered` | :filtered |
 | `count` | :count |
 | `first_element` | :first item |
-| `specific_item` | :item # |
+| `specific_item` | :item # | Takes a **Numeric Literal** argument |
 
 ### ID Accessors
 | Name | Human Label | Notes |
