@@ -138,8 +138,10 @@ window.addEventListener('message', function (event) {
                   }
                   if (rawText.trim()) secondaryName = "Text " + (rawText.trim().length > 25 ? rawText.trim().substring(0, 25) + "..." : rawText.trim()).replace(/\s+/g, ' ');
               } else if (type === 'Icon' || type === 'MaterialIcon') {
-                  const ico = props['icon'] || props['material_icon'] || props['icon_name'];
-                  if (typeof ico === 'string') secondaryName = "Icon " + ico;
+                  const ico = props['%9i'] || props['icon'] || props['material_icon'] || props['icon_name'];
+                  if (typeof ico === 'string') {
+                      secondaryName = "Icon " + ico.replace(/^fa fa-/, '');
+                  }
               } else if (type === 'Button') {
                   const label = props['%cap'] || props['caption'] || props['text'];
                   if (typeof label === 'string') secondaryName = "Button " + label;
@@ -147,8 +149,15 @@ window.addEventListener('message', function (event) {
                   const placeholder = props['placeholder'] || props['initial_value'];
                   if (typeof placeholder === 'string') secondaryName = type + " (" + placeholder + ")";
               } else if (['Group', 'RepeatingGroup', 'Popup', 'FloatingGroup'].includes(type)) {
-                  const subtype = props['%gt'] || props['group_type'] || props['type_of_thing'] || props['content_type'] || props['type'];
-                  if (typeof subtype === 'string' && !subtype.includes('_default_')) secondaryName = type + " [" + subtype + "]";
+                  let subtype = props['%gt'] || props['group_type'] || props['type_of_thing'] || props['content_type'] || props['type'];
+                  if (typeof subtype === 'string' && !subtype.includes('_default_')) {
+                      if (subtype === 'boolean') subtype = 'yes/no';
+                      if (subtype.startsWith('custom.')) {
+                          subtype = subtype.replace('custom.', '');
+                          subtype = subtype.charAt(0).toUpperCase() + subtype.slice(1);
+                      }
+                      secondaryName = type + " [" + subtype + "]";
+                  }
               } else if (type === 'CustomDefinition') {
                     secondaryName = "Reusable: " + (cache['__name'] || "Element");
                 }
