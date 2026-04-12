@@ -2254,11 +2254,26 @@ window.loadedCodelessLoveScripts ||= {};
       return String(token.value !== undefined ? token.value : token.type);
     }
 
+    if (token.type === 'GetElement') {
+      const elementId = token.properties?.element_id;
+      const foundMatch = AVAILABLE_PAGED_ELEMENTS.find(el => el.val?.properties?.element_id === elementId);
+      return foundMatch ? foundMatch.label : "Element (" + (elementId || "?") + ")";
+    }
+
     if (token.type === 'Message') {
-      text = ":" + (token.name || "unknown");
-    } else if (token.type === 'ArbitraryText') {
-      text = "Arbitrary Text";
-    } else if (token.type === 'Search') {
+      // Try to find a pretty label in the schema
+      let pretty = token.name;
+      const allOps = Object.values(BUBBLE_SCHEMA).flat();
+      const match = allOps.find(o => o.op === token.name);
+      if (match) pretty = match.label;
+      return ":" + (pretty || token.name || "unknown");
+    }
+
+    // Check standard data sources for a label
+    const dsMatch = DATA_SOURCES.find(ds => ds.type === token.type);
+    if (dsMatch) return dsMatch.label;
+
+    if (token.type === 'Search') {
       text = "Search for " + (token.properties?.type_to_find || "...");
     }
 

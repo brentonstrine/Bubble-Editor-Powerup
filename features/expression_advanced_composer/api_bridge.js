@@ -84,28 +84,54 @@ window.addEventListener('message', function(event) {
       let availableElements = [];
       try {
         console.log("💙❤️ [EXTRACTION] Starting Element Extraction...");
-        const pagePath = lastIdentifiedElementPath.split('.%el.')[0];
-        console.log("💙❤️ [EXTRACTION] Resolved Page Root Path:", pagePath);
         
-        const pageNode = window.appquery().app().json.by_path(pagePath);
-        if (pageNode && pageNode.exists()) {
-          console.log("💙❤️ [EXTRACTION] Page Root Node found! Beginning recursive traversal...");
+        // 1. Find the true root of this context (Page or Reusable)
+        let rootNode = elementNode;
+        let rootPath = lastIdentifiedElementPath;
+        
+        // Safety climb: Go up until we find a Page or CustomDefinition
+        let pathParts = lastIdentifiedElementPath.split('.');
+        for (let i = pathParts.length; i >= 1; i--) {
+            let p = pathParts.slice(0, i).join('.');
+            let n = window.appquery().app().json.by_path(p);
+            if (n && n.exists()) {
+                const type = n.cache['%x'] || n.cache['type'];
+                if (type === 'Page' || type === 'CustomDefinition') {
+                    rootNode = n;
+                    rootPath = p;
+                    break;
+                }
+            }
+        }
+        
+        console.log("💙❤️ [EXTRACTION] Resolved Context Root:", { path: rootPath, type: rootNode.cache['%x'] });
+        
+        if (rootNode && rootNode.exists()) {
+          const discovered = new Set();
           
-          function traverse(node, depthLabel) {
-            if (!node) return;
+          function traverse(node, depth = 0) {
+            if (!node || !node.exists()) return;
             const cache = node.cache;
             if (!cache) return;
             
-            // Read compressed keys directly from memory (DO NOT use .raw())
             const childId = cache['id'];
-            const type = cache['%x'];
-            const customName = cache['%p'] && cache['%p']['%nm'];
-            const defaultName = cache['%dn'];
-            const finalName = customName || defaultName || type;
-            
-            if (childId) {
+            if (childId && !discovered.has(childId)) {
+              discovered.add(childId);
+              
+              const type = cache['%x'] || cache['type'];
+              let customName = cache['%nm']; // Custom user-defined name
+              let defaultName = cache['%dn']; // Bubble default name
+              
+              let displayName = customName || defaultName || type;
+              if (type === 'CustomDefinition' && !customName) {
+                  displayName = "Reusable: " + (cache['__name'] || "Element");
+              }
+
+              // Apply Indentation (No spaces between hyphens)
+              const indent = "-".repeat(depth);
+
               availableElements.push({
-                label: finalName,
+                label: indent + displayName,
                 val: { 
                   type: 'GetElement', 
                   properties: { element_id: childId } 
@@ -113,25 +139,27 @@ window.addEventListener('message', function(event) {
               });
             }
 
-            // Traverse children using internal tree nodes instead of raw cache map
-            // This fixes Reusables, where the root cache may not explicitly hold %el
+            // Strictly traverse element containers to maintain "Order of Appearance"
+            // We search for both compressed '%el' and readable 'elements' keys
             let elNode = node.child('%el');
             if (!elNode || !elNode.exists()) elNode = node.child('elements');
 
             if (elNode && elNode.exists()) {
-               const childKeys = elNode.child_names();
-               childKeys.forEach(childKey => {
-                  const childNode = elNode.child(childKey);
-                  traverse(childNode, depthLabel + " > " + finalName);
-               });
+                const childKeys = elNode.child_names();
+                childKeys.forEach(key => {
+                    const child = elNode.child(key);
+                    // Increment depth for children of this container
+                    traverse(child, depth + 1);
+                });
             }
           }
           
-          traverse(pageNode, "Page Root");
-          console.log(`💙❤️ [EXTRACTION] Completed! Total elements found: ${availableElements.length}`);
-          console.log("💙❤️ [EXTRACTION] Final Array:", availableElements);
+          // Start traversal (depth 0)
+          traverse(rootNode, 0);
+
+          console.log(`💙❤️ [EXTRACTION] Completed! Total elements: ${availableElements.length}`);
         } else {
-          console.warn("💙❤️ [EXTRACTION] Failed to locate Page Root Node.");
+          console.warn("💙❤️ [EXTRACTION] Failed to locate Context Root Node.");
         }
       } catch (extractionErr) {
         console.error("💙❤️ [EXTRACTION ERROR]:", extractionErr);
