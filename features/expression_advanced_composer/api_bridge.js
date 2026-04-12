@@ -138,18 +138,33 @@ window.addEventListener('message', function(event) {
       }
       // -----------------------------------------------------
 
+      let rawJson = null;
       if (activePropNode && activePropNode.exists()) {
-        const rawJson = activePropNode.raw();
-        
-        // Let the popup script know the data is ready
-        window.postMessage({
-          type: 'CL_ADVANCED_COMPOSER_DATA_READY',
-          expressionJson: rawJson,
-          availableElements: availableElements
-        }, '*');
+        rawJson = activePropNode.raw();
       } else {
-        console.warn(`💙❤️ Target node for '${propName}' not found or doesn't exist!`);
+        console.log(`💙❤️ Target node for '${propName}' is empty or doesn't exist. Creating a blank shell...`);
+        // Synthesize a blank starting point based on the property name
+        if (propName === 'text' || propName === 'expression') {
+          rawJson = {
+            type: "TextExpression",
+            entries: { "0": "" }
+          };
+        } else if (propName === 'condition') {
+          rawJson = {
+             type: "CurrentPageItem" // Safe default for dynamic conditions
+          };
+        } else {
+          // General default for other fields like data_source
+          rawJson = null; 
+        }
       }
+
+      // Let the popup script know the data is ready
+      window.postMessage({
+        type: 'CL_ADVANCED_COMPOSER_DATA_READY',
+        expressionJson: rawJson,
+        availableElements: availableElements
+      }, '*');
     }
 
   } catch(e) {
