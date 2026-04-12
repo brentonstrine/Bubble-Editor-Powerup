@@ -526,7 +526,27 @@ window.loadedCodelessLoveScripts ||= {};
 
     }, true /* capture phase */);
 
+    window.CL_ExportData = function() {
+        const graph = loadGraph();
+        const schema = JSON.parse(localStorage.getItem('CL_AppSchema') || '{}');
+        const exportObj = {
+            graph,
+            schema,
+            stats: {
+                totalDiscoveryKeys: Object.keys(graph).length,
+                totalSchemaTypes: Object.keys(schema.customTypes || {}).length,
+                timestamp: new Date().toISOString()
+            }
+        };
+        console.group("❤️ [Expression Analyzer] Full Data Export");
+        console.log("Graph:", graph);
+        console.log("Schema:", schema);
+        console.log("Unified Export:", exportObj);
+        console.groupEnd();
+        return exportObj;
+    };
+
     observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
-    console.log("❤️ [Expression Analyzer] Phase 2: Dropdown observer active.");
+    console.log("❤️ [Expression Analyzer] Phase 2: Dropdown observer active. Use CL_ExportData() to dump all recorded info.");
 
 })();//👈👈 don't delete this, and don't put anything outside of this!!
