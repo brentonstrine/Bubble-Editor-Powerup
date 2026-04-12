@@ -261,28 +261,31 @@ window.loadedCodelessLoveScripts ||= {};
     }
 
     function getOptionLevel(option, graph, visited = new Set()) {
-        const isClicked = option.clicked || option.operatorKey || option.datasourceKey;
+        const labels = Array.isArray(option) ? option.map(o => o.label) : [option.label];
+        const isClicked = (Array.isArray(option) ? option : [option]).some(o => o.clicked || o.operatorKey || o.datasourceKey);
         if (!isClicked) return 0;
         
-        if (!option.operatorKey && !option.datasourceKey) return 4;
+        // Use the first non-null operator/datasource key for chaining check
+        const firstWithKey = (Array.isArray(option) ? option : [option]).find(o => o.operatorKey || o.datasourceKey);
+        if (!firstWithKey) return 4;
         
-        const targetKey = lhoKey({ operatorKey: option.operatorKey, datasourceKey: option.datasourceKey });
-        if (!targetKey) return 4;
+        const targetKeys = lhoKeys({ operatorKey: firstWithKey.operatorKey, datasourceKey: firstWithKey.datasourceKey });
+        const primaryTargetKey = targetKeys.specific;
         
-        if (!graph[targetKey] || !graph[targetKey].options) return 1;
+        if (!graph[primaryTargetKey] || !graph[primaryTargetKey].options) return 1;
         
-        if (visited.has(targetKey)) return 4;
-        visited.add(targetKey);
+        if (visited.has(primaryTargetKey)) return 4;
+        visited.add(primaryTargetKey);
         
-        const childrenKeys = Object.keys(graph[targetKey].options);
+        const childrenKeys = Object.keys(graph[primaryTargetKey].options);
         if (childrenKeys.length === 0) {
-            visited.delete(targetKey);
+            visited.delete(primaryTargetKey);
             return 4;
         }
         
         let minChildLevel = 4;
         for (const childLabel of childrenKeys) {
-            const childOption = graph[targetKey].options[childLabel];
+            const childOption = graph[primaryTargetKey].options[childLabel];
             const childLevel = getOptionLevel(childOption, graph, visited);
             if (childLevel < minChildLevel) {
                 minChildLevel = childLevel;
@@ -290,7 +293,7 @@ window.loadedCodelessLoveScripts ||= {};
             if (minChildLevel === 0) break;
         }
         
-        visited.delete(targetKey);
+        visited.delete(primaryTargetKey);
         return Math.min(4, minChildLevel + 1);
     }
 
@@ -298,6 +301,10 @@ window.loadedCodelessLoveScripts ||= {};
         const containers = wrapper.querySelectorAll('.dropdown-item-container');
         
         let levelCounts = {0:0, 1:0, 2:0, 3:0, 4:0};
+
+        // Determine the generic entry once
+        const keys = lhoKeys(entry.lho);
+        const genericEntry = keys.generic ? graph[keys.generic] : null;
 
         containers.forEach(container => {
             if (container.dataset.clEaLevel !== undefined) {
@@ -308,9 +315,18 @@ window.loadedCodelessLoveScripts ||= {};
             const label = labelEl?.firstChild?.textContent?.trim() ?? container.textContent.trim();
 
             const optionData = entry.options[label];
+            const genericOptionData = genericEntry?.options?.[label];
+            
             let level = 0;
-            if (optionData) {
-                level = getOptionLevel(optionData, graph);
+            if (optionData || genericOptionData) {
+                const levelSpecific = optionData ? getOptionLevel(optionData, graph) : 0;
+                
+                // An operator is "Universal" if it has been seen in at least 2 different LHOs of this category
+                const isUniversal = (genericOptionData?.lhoSources?.length || 0) >= 2;
+                const levelGeneric = (genericOptionData && isUniversal) 
+                                    ? getOptionLevel(genericOptionData, graph) : 0;
+                
+                level = Math.max(levelSpecific, levelGeneric);
             }
             container.dataset.clEaLevel = level;
             levelCounts[level]++;
@@ -325,23 +341,36 @@ window.loadedCodelessLoveScripts ||= {};
     // ─── LocalStorage engine ─────────────────────────────────────────────────────
     const STORE_KEY = 'CL_ExpressionGraph';
 
-    function lhoKey(lho) {
-        if (!lho || lho.error) return null;
-        let base = null;
-        if (lho.operatorKey)   base = `op:${lho.operatorKey}`;
-        else if (lho.datasourceKey) base = `ds:${lho.datasourceKey}`;
+    function lhoKeys(lho) {
+        if (!lho || lho.error) return { specific: null, generic: null };
+        let specific = null;
+        if (lho.operatorKey)        specific = `op:${lho.operatorKey}`;
+        else if (lho.datasourceKey) specific = `ds:${lho.datasourceKey}`;
         
-        if (!base) return null;
+        if (!specific) return { specific: null, generic: null };
 
-        // Pattern Normalization: Strip specific type IDs for generalization
-        // (e.g. current_order_custom_12345x67890 -> current_order_custom_*)
-        if (base.includes('_custom_')) {
-            lho.isCustomField = true;
-            lho.normalizedPattern = base.replace(/_custom_.*$/, '_custom_*');
-            lho.isList = base.includes('_list_custom_');
-        }
+        let generic = null;
+        const baseKey = lho.operatorKey || lho.datasourceKey || '';
+        
+        // Categories based on suffix naming grammar
+        if (baseKey.includes('_list_custom_')) generic = 'cat:List.Custom';
+        else if (baseKey.includes('_custom_'))      generic = 'cat:Single.Custom';
+        else if (baseKey.includes('_list_text'))    generic = 'cat:List.Text';
+        else if (baseKey.includes('_text'))         generic = 'cat:Single.Text';
+        else if (baseKey.includes('_list_number'))  generic = 'cat:List.Number';
+        else if (baseKey.includes('_number'))       generic = 'cat:Single.Number';
+        else if (baseKey.includes('_list_boolean')) generic = 'cat:List.Boolean';
+        else if (baseKey.includes('_boolean'))      generic = 'cat:Single.Boolean';
+        else if (baseKey.includes('_list_date'))    generic = 'cat:List.Date';
+        else if (baseKey.includes('_date'))         generic = 'cat:Single.Date';
+        else if (baseKey.includes('_list_user'))    generic = 'cat:List.User';
+        else if (baseKey === 'Search')              generic = 'cat:List.Custom'; // Searches default to list of custom
 
-        return base;
+        return { specific, generic };
+    }
+
+    function lhoKey(lho) {
+        return lhoKeys(lho).specific;
     }
     function loadGraph() {
         try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
@@ -349,52 +378,77 @@ window.loadedCodelessLoveScripts ||= {};
     }
     function saveGraph(g) { localStorage.setItem(STORE_KEY, JSON.stringify(g)); }
 
-    /** Phase 2.5 — persist scraped labels immediately at dropdown-open time. */
     function recordAvailableOptions(lho, scraped) {
-        const key = lhoKey(lho);
-        if (!key) return;
+        const keys = lhoKeys(lho);
+        if (!keys.specific) return;
         const graph = loadGraph();
-        if (!graph[key]) graph[key] = { lho, options: {} };
         
-        // Update return category if we have a better guess now
+        // 1. Specific Entry
+        if (!graph[keys.specific]) graph[keys.specific] = { lho, options: {} };
+        const specificEntry = graph[keys.specific];
         if (lho.returnCategory && lho.returnCategory !== 'Unknown') {
-            graph[key].lho.returnCategory = lho.returnCategory;
+            specificEntry.lho.returnCategory = lho.returnCategory;
         }
 
+        // 2. Generic Category Entry
+        if (keys.generic) {
+            if (!graph[keys.generic]) graph[keys.generic] = { lho, options: {} };
+        }
+        const genericEntry = keys.generic ? graph[keys.generic] : null;
+
         for (const { label, disabled } of scraped) {
-            if (!graph[key].options[label]) {
-                graph[key].options[label] = { label, operatorKey: null, datasourceKey: null, disabled };
+            // Persist in specific
+            if (!specificEntry.options[label]) {
+                specificEntry.options[label] = { label, operatorKey: null, datasourceKey: null, disabled };
+            }
+
+            // Persist in generic
+            if (genericEntry) {
+                if (!genericEntry.options[label]) {
+                    genericEntry.options[label] = { label, clicked: false, lhoSources: [] };
+                }
+                const genOpt = genericEntry.options[label];
+                if (!genOpt.lhoSources.includes(keys.specific)) {
+                    genOpt.lhoSources.push(keys.specific);
+                    // Cap sources array to prevent bloat, but enough to prove universality
+                    if (genOpt.lhoSources.length > 5) genOpt.lhoSources.shift();
+                }
             }
         }
+
         saveGraph(graph);
-        console.log(`❤️ [Expression Analyzer] Phase 2.5 ✅ [${key}] — ${scraped.length} options recorded`);
+        console.log(`❤️ [Expression Analyzer] Phase 2.5 ✅ [${keys.specific}] — ${scraped.length} options recorded`);
     }
                                                         
     /** Phase 4.5 — enrich a label with its internal operator/datasource key after a click. */
     function recordSelectedKey(lho, uiLabel, operatorKey, datasourceKey, isLeaf = false, searchAlias = '') {
-        const key = lhoKey(lho);
-        if (!key) return;
+        const keys = lhoKeys(lho);
+        if (!keys.specific) return;
         const graph = loadGraph();
-        if (!graph[key]) graph[key] = { lho, options: {} };
-        const existing = graph[key].options[uiLabel] || {};
         
-        // Only update searchAlias if we actually had one and it's longer than what we have
-        const currentAliases = existing.searchAliases || [];
-        if (searchAlias && !currentAliases.includes(searchAlias)) {
-            currentAliases.push(searchAlias);
-        }
+        [keys.specific, keys.generic].forEach(key => {
+            if (!key) return;
+            if (!graph[key]) graph[key] = { lho, options: {} };
+            const existing = graph[key].options[uiLabel] || {};
+            
+            const currentAliases = existing.searchAliases || [];
+            if (searchAlias && !currentAliases.includes(searchAlias)) {
+                currentAliases.push(searchAlias);
+            }
 
-        graph[key].options[uiLabel] = {
-            label: uiLabel,
-            operatorKey:   operatorKey   || existing.operatorKey   || null,
-            datasourceKey: datasourceKey || existing.datasourceKey || null,
-            disabled: existing.disabled || false,
-            clicked: true,
-            isLeaf: isLeaf,
-            searchAliases: currentAliases
-        };
+            graph[key].options[uiLabel] = {
+                ...existing,
+                label: uiLabel,
+                operatorKey:   operatorKey   || existing.operatorKey   || null,
+                datasourceKey: datasourceKey || existing.datasourceKey || null,
+                clicked: true,
+                isLeaf: isLeaf,
+                searchAliases: currentAliases
+            };
+        });
+
         saveGraph(graph);
-        console.log(`❤️ [Expression Analyzer] Phase 4.5 ✅ [${key}] "${uiLabel}" → op:${operatorKey} ds:${datasourceKey} isLeaf:${isLeaf} (alias: ${searchAlias})`);
+        console.log(`❤️ [Expression Analyzer] Phase 4.5 ✅ [${keys.specific}] "${uiLabel}" → op:${operatorKey} ds:${datasourceKey} isLeaf:${isLeaf} (alias: ${searchAlias})`);
     }
 
     // ─── Phase 4: Single delegated mousedown listener ────────────────────────────
