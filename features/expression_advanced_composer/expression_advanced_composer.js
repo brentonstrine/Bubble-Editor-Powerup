@@ -61,12 +61,22 @@ window.loadedCodelessLoveScripts ||= {};
       const propWrapper = target.closest('[data-prop-name]');
       const propName = propWrapper ? propWrapper.getAttribute('data-prop-name') : null;
       console.log("💙❤️ Target property Name:", propName);
+      
+      let conditionDOMIndex = 0;
+      if (propName === 'condition') {
+          const allConditionBlocks = Array.from(document.querySelectorAll('[data-conditional="true"]'));
+          const currentBlock = target.closest('[data-conditional="true"]');
+          if (currentBlock) {
+              conditionDOMIndex = allConditionBlocks.indexOf(currentBlock);
+          }
+      }
 
       // Send message via window to trigger api_bridge extraction.
       window.postMessage({
         type: 'CL_ADVANCED_COMPOSER_IDENTIFY',
         targetClasses: classListArray,
-        propName: propName
+        propName: propName,
+        conditionDOMIndex: conditionDOMIndex
       }, '*');
     };
 

@@ -24,6 +24,13 @@ window.appquery().app().json
 ### The Golden Rule of Reading Data
 **Never call `.raw()` on the root node.** Doing `window.appquery().app().json.raw()` forces the editor to decompress and load the *entire* application into the browser's memory at once. This will freeze the browser, spike server loads, and potentially get your extension blocked. Always navigate down to a specific branch or element before reading data.
 
+## Avoid Raw Calls in Production
+**Avoid using `.raw()` programmatically.** Calling `.raw()` is generally unecessary and is not performant. This is not just a warning for the full application root, but for specific elements as well. Because bubble elements can contain enormous trees of children and data sources, using `.raw()` in programmatic loops or automated scripts can create severe performance bottlenecks and massive memory leaks. 
+
+Instead, you should rapidly navigate the tree using Bubble's internal navigation methods or access the lightweight `node.cache`. 
+
+**The primary use case for `.raw()`** is for diagnostics and runtime investigation during development—-it's a tool to get a highly legible and structured JSON output to help you understand what data is available so you can safely query it using lighter methods.
+
 ---
 
 ## 2. Navigating the JSON Tree
@@ -68,6 +75,41 @@ Bubble shrinks standard JSON keys into tiny symbols to save memory. Here is how 
 | **`%h`, `%w`, `%l`, `%t`** | Height, Width, Left, Top | Inside `node.cache['%p']` |
 
 > **Warning:** Treat `node.cache` as strictly **Read-Only**. Modifying the cache directly will break Bubble's internal reactivity and fail to save to the database.
+
+## 6. Zombie Conditionals (State Arrays)
+
+When reading conditionals from the `states` (or `%s`) block via `child_names()`, be aware that Bubble **does not re-index** items if a user deletes a condition in the visual editor. 
+
+If a user creates three conditions (indexes `0`, `1`, `2`) and deletes the first two, Bubble's `child_names()` will still return an array of `['0', '1', '2']`.
+
+*   Indexes `0` and `1` will be "zombies" (empty objects, lacking a `.condition` or `%c` key).
+*   Index `2` will contain the valid expression.
+
+When traversing the DOM to map visual rows to internal JSON states, you must sequentially filter the ID array to ignore these zombies:
+```javascript
+// Filter out zombies before mapping visual DOM Index to Bubble Index
+let conditionIds = elementNode.child('%s').child_names();
+conditionIds = conditionIds.filter(id => {
+    const rawState = elementNode.child('%s').child(id).raw() || {};
+    return rawState.hasOwnProperty('%c') || rawState.hasOwnProperty('condition');
+});
+```
+
+## 7. Compressed JSON Key Dictionary (Cheat Sheet)
+
+Bubble violently compresses its JSON tree for production/app apps. Here are the known keys:
+*   `%s`: **States / Conditionals**. Contains the logic states attached to an element. (Uncompressed: `states`)
+*   `%s1`: **Style ID**. The ID string of the visual style class applied to the element. (Uncompressed: `style`)
+*   `%c`: **Condition expression**. The actual logical expression inside a conditional state. (Uncompressed: `condition`)
+*   `%p`: **Properties**. The main wrapper around the element's distinct settings. (Uncompressed: `properties`)
+*   `%el`: **Elements (Children)**. The container holding nested components. (Uncompressed: `elements`)
+*   `%gt`: **Group Type**. The data type designation for a container. (Uncompressed: `group_type`)
+*   `%3`: **Text Expression**. The root of a text content property. (Uncompressed: `text`)
+*   `%e`: **Entries**. The child entries inside a Text Expression. (Uncompressed: `entries`)
+*   `%9i`: **Icon Name**. The specific icon string. (Uncompressed: `icon`)
+*   `%nm`: **Custom Name**. The user-defined string name of the node. 
+*   `%dn`: **Default Name**. The system-generated backup name. 
+*   `%x`: **Type**. The class designation of the node.
 
 ---
 

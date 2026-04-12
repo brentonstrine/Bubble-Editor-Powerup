@@ -55,14 +55,44 @@ window.addEventListener('message', function (event) {
           // Ask the main script for the raw React props of the element to trace the ID
           window.postMessage({ type: 'CL_ADVANCED_COMPOSER_FETCH_REACT_PROPS' }, '*');
 
-          // As a fallback for right now, let's just grab the FIRST condition on the element
-          const conditionsNode = elementNode.child('states');
+          // Dynamic lookup for the conditions container (handles compressed %s or states)
+          const conditionsNode = elementNode.child('%s').exists() ? elementNode.child('%s') : elementNode.child('states');
+
           if (conditionsNode.exists()) {
-            const conditionIds = conditionsNode.child_names();
+            let conditionIds = conditionsNode.child_names();
             if (conditionIds.length > 0) {
-              console.log(`💙❤️ Fallback: Using condition ID: ${conditionIds[0]}`);
-              activePropNode = conditionsNode.child(conditionIds[0]).child('condition');
-              lastIdentifiedPropName = 'states.' + conditionIds[0] + '.condition'; // Store full path for saving
+              // Bubble keys are often "0", "2", "3". Sort them numerically.
+              conditionIds.sort((a,b) => parseInt(a) - parseInt(b));
+              
+              // FILTER OUT ZOMBIE STATES
+              // Bubble retains deleted states in the JSON hash (e.g. index 0 and 1 might be empty or missing %c).
+              // Since the visual UI only renders valid conditions, we must filter out zombies to align conditionDOMIndex.
+              conditionIds = conditionIds.filter(id => {
+                 const st = conditionsNode.child(id);
+                 if (!st.exists()) return false;
+                 
+                 const rawState = st.raw() || {};
+                 return rawState.hasOwnProperty('%c') || rawState.hasOwnProperty('condition');
+              });
+
+              const targetIndex = event.data.conditionDOMIndex || 0;
+              const bestId = conditionIds[targetIndex] || conditionIds[0];
+              console.log(`💙❤️ Mapping visual DOM block [${targetIndex}] to valid condition ID: ${bestId}`);
+              
+              if (bestId !== undefined) {
+                const stateNode = conditionsNode.child(bestId);
+                const rawState = stateNode.raw() || {};
+                const hasCompressedC = rawState.hasOwnProperty('%c');
+                
+                activePropNode = hasCompressedC ? stateNode.child('%c') : stateNode.child('condition');
+
+                const containerName = elementNode.child('%s').exists() ? '%s' : 'states';
+                const propKey = hasCompressedC ? '%c' : 'condition';
+                lastIdentifiedPropName = `${containerName}.${bestId}.${propKey}`;
+                console.log(`💙❤️ Target Path resolved successfully: ${lastIdentifiedPropName}`);
+              } else {
+                console.warn(`💙❤️ Failed to map condition at index ${targetIndex}. No valid states found.`);
+              }
             }
           }
         } else {
@@ -217,10 +247,10 @@ window.addEventListener('message', function (event) {
           console.error("💙❤️ [EXTRACTION ERROR]:", extractionErr);
         }
         // -----------------------------------------------------
-
         let rawJson = null;
         if (activePropNode && activePropNode.exists()) {
           rawJson = activePropNode.raw();
+          console.log(`💙❤️ Successfully grabbed raw content for ${propName}!`, rawJson);
         } else {
           console.log(`💙❤️ Target node for '${propName}' is empty or doesn't exist. Creating a blank shell...`);
           // Synthesize a blank starting point based on the property name
