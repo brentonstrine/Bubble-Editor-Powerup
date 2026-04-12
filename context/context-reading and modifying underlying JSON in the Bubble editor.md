@@ -126,6 +126,80 @@ Bubble violently compresses its JSON tree for production/app apps. Here are the 
 
 ---
 
+## 8. Expression Chain Architecture
+
+Bubble expressions are **recursive linked lists**. Each node in the chain has a `type` (or `%x`), and optionally a `next` (or `%n`) pointer to the next operation. The chain reads left-to-right, exactly mirroring the visual expression builder in the Bubble editor.
+
+### Chain Structure
+```
+[RootType] → .method1() → .method2(args) → .method3()
+```
+In JSON, this looks like:
+```json
+{
+  "type": "CurrentUser",
+  "next": {
+    "type": "Message",
+    "name": "current_seat_custom_seat",
+    "next": {
+      "type": "Message",
+      "name": "team_custom_team"
+    }
+  }
+}
+```
+
+### Known Root Types (Expression Starting Points)
+| Root Type | Description | Key Properties |
+| :--- | :--- | :--- |
+| `CurrentUser` | The logged-in user | — |
+| `ThisElement` | The element itself (e.g., "This Group's data") | — |
+| `GetElement` | References another element by ID | `properties.element_id` |
+| `Search` | "Do a Search for" query | `properties.constraints`, `properties.type_to_find`, `properties.sort_field`, `properties.descending` |
+| `PageData` | Page-level data (e.g., "Current Page Width") | `properties.name` |
+| `OneOptionValue` | A specific Option Set value | `properties.option_set`, `properties.option_value` |
+| `PrimitiveLiteral` | A hardcoded literal value | `properties.value`, `properties.btype` (e.g., `sys.bool`) |
+| `TextExpression` | Text content with dynamic insertions | `entries` (indexed dictionary of strings and/or expression objects) |
+| `GetParamFromUrl` | URL parameter accessor | `properties.parameter_name` (a TextExpression) |
+| `ElementParent` | Parent element's data source (shorthand) | — |
+
+### Message Names (Method Chaining)
+`Message` is the universal chaining type. Its `name` property defines the operation. Message names follow a naming convention that **encodes field names and their data types**:
+
+*   **Field accessors**: `email`, `team_custom_team` (field `team` of type `custom.team`), `current_seat_custom_seat`, `featuresets_list_custom_featureset` (list field)
+*   **Data retrieval**: `get_group_data`, `get_list_data`
+*   **Comparisons**: `equals`, `less_than`, `is_empty`, `is_not_empty`, `contains`, `not_logged_in`
+*   **Boolean logic**: `and_`
+*   **List operations**: `merged_with`, `unique`, `sorted`
+
+### Args Patterns
+The `args` (or `%a`) property on a `Message` carries the argument to the operation. Its shape varies:
+
+| Pattern | Example | Meaning |
+| :--- | :--- | :--- |
+| Literal number | `"args": 468` | Direct numeric value (e.g., `.less_than(468)`) |
+| Literal string | `"args": "true"` | Direct string value |
+| Expression object | `"args": { "type": "OneOptionValue", ... }` | A full nested expression as the argument |
+
+### `is_slidable`
+This flag appears on most expression chain nodes. It is almost always `false`. The one confirmed exception is `.sorted()`, which has `is_slidable: true`. This likely indicates whether the operation's position in the chain can be reordered without changing the result.
+
+### Where Expressions Live on an Element
+Expressions can appear in multiple locations within a single element's JSON:
+
+*   `properties.data_source` — The element's data binding
+*   `properties.text` (or `%3`) — Text content (as a `TextExpression`)
+*   `properties.placeholder` (or `%ps`) — Input placeholder text
+*   `states[N].condition` (or `%s[N].%c`) — Conditional logic
+*   `states[N].properties.*` — Override values within conditionals (can themselves be expressions)
+*   `properties.param_*` — Reusable element parameter bindings
+*   `properties.unique_id` — Element ID attribute (as a `TextExpression`)
+
+### Workflow Actions
+Workflow action expressions are **NOT** stored on the element itself. They are stored separately in Bubble's JSON tree. Inspecting a Button element, for example, will show its text and conditionals but not its click actions.
+
+---
+
 ## 4. Writing & Modifying Data
 To modify an element, you must extract its data, mutate the standard JavaScript object, and push it back using `node.set()`. 
 
