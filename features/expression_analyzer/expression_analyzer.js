@@ -313,15 +313,16 @@ window.loadedCodelessLoveScripts ||= {};
 
             const labelEl = container.querySelector('.dropdown-item');
             const label = labelEl?.firstChild?.textContent?.trim() ?? container.textContent.trim();
-
+            const gLabel = getGenericLabel(label);
             const optionData = entry.options[label];
-            const genericOptionData = genericEntry?.options?.[label];
+            const genericOptionData = genericEntry?.options?.[gLabel];
             
             let level = 0;
             if (optionData || genericOptionData) {
                 const levelSpecific = optionData ? getOptionLevel(optionData, graph) : 0;
                 
-                // An operator is "Universal" if it has been seen in at least 2 different LHOs of this category
+                // An operator is "Universal" if it has been seen in at least 2 different LHOs of this category.
+                // Property placeholders like "'s [Property]" will hit this threshold immediately across data types.
                 const isUniversal = (genericOptionData?.lhoSources?.length || 0) >= 2;
                 const levelGeneric = (genericOptionData && isUniversal) 
                                     ? getOptionLevel(genericOptionData, graph) : 0;
@@ -377,6 +378,13 @@ window.loadedCodelessLoveScripts ||= {};
         return { specific, generic };
     }
 
+    function getGenericLabel(label) {
+        if (!label) return label;
+        if (label.startsWith("'s ")) return "'s [Property]";
+        if (label.startsWith(":each item's ")) return ":each item's [Property]";
+        return label;
+    }
+
     function lhoKey(lho) {
         return lhoKeys(lho).specific;
     }
@@ -405,23 +413,22 @@ window.loadedCodelessLoveScripts ||= {};
         const genericEntry = keys.generic ? graph[keys.generic] : null;
 
         for (const { label, disabled } of scraped) {
-            // Persist in specific
+            // 1. Persist in specific (the actual field name)
             if (!specificEntry.options[label]) {
                 specificEntry.options[label] = { label, operatorKey: null, datasourceKey: null, disabled };
             }
 
-            // Persist in generic
+            // 2. Persist in generic (the abstracted pattern)
             if (genericEntry) {
-                if (!genericEntry.options[label]) {
-                    genericEntry.options[label] = { label, clicked: false, lhoSources: [] };
+                const gLabel = getGenericLabel(label);
+                if (!genericEntry.options[gLabel]) {
+                    genericEntry.options[gLabel] = { label: gLabel, clicked: false, lhoSources: [] };
                 }
-                const genOpt = genericEntry.options[label];
-                // Migration: Ensure lhoSources exists for data from older versions
+                const genOpt = genericEntry.options[gLabel];
                 if (!genOpt.lhoSources) genOpt.lhoSources = [];
                 
                 if (!genOpt.lhoSources.includes(keys.specific)) {
                     genOpt.lhoSources.push(keys.specific);
-                    // Cap sources array to prevent bloat, but enough to prove universality
                     if (genOpt.lhoSources.length > 5) genOpt.lhoSources.shift();
                 }
             }
@@ -440,7 +447,10 @@ window.loadedCodelessLoveScripts ||= {};
         [keys.specific, keys.generic].forEach(key => {
             if (!key) return;
             if (!graph[key]) graph[key] = { lho, options: {} };
-            const existing = graph[key].options[uiLabel] || { label: uiLabel, clicked: false, lhoSources: [] };
+
+            // For the generic entry, we use the abstracted label
+            const l = (key === keys.generic) ? getGenericLabel(uiLabel) : uiLabel;
+            const existing = graph[key].options[l] || { label: l, clicked: false, lhoSources: [] };
             
             // Migration fix for clicking old data
             if (key === keys.generic && !existing.lhoSources) existing.lhoSources = [keys.specific];
@@ -450,9 +460,9 @@ window.loadedCodelessLoveScripts ||= {};
                 currentAliases.push(searchAlias);
             }
 
-            graph[key].options[uiLabel] = {
+            graph[key].options[l] = {
                 ...existing,
-                label: uiLabel,
+                label: l,
                 operatorKey:   operatorKey   || existing.operatorKey   || null,
                 datasourceKey: datasourceKey || existing.datasourceKey || null,
                 clicked: true,
@@ -538,12 +548,13 @@ window.loadedCodelessLoveScripts ||= {};
                 timestamp: new Date().toISOString()
             }
         };
+        const stringified = JSON.stringify(exportObj, null, 2);
         console.group("❤️ [Expression Analyzer] Full Data Export");
         console.log("Graph:", graph);
         console.log("Schema:", schema);
-        console.log("Unified Export:", exportObj);
+        console.log("Stringified:", stringified);
         console.groupEnd();
-        return exportObj;
+        return stringified;
     };
 
     observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
