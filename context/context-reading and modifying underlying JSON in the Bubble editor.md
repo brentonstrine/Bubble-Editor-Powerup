@@ -21,6 +21,11 @@ The root entry point for the API is:
 window.appquery().app().json
 ```
 
+### Path Prefixes
+When looking at a Node's path (`node.path()`), you will encounter common prefixes that indicate the starting scope:
+*   **`%p3`**: Points to the standard Page components or the main application tree.
+*   **`%ed`**: Editor-level data container, often used for reusables or specific editor-only overlays.
+
 ### The Golden Rule of Reading Data
 **Never call `.raw()` on the root node.** Doing `window.appquery().app().json.raw()` forces the editor to decompress and load the *entire* application into the browser's memory at once. This will freeze the browser, spike server loads, and potentially get your extension blocked. Always navigate down to a specific branch or element before reading data.
 
@@ -120,8 +125,10 @@ Bubble violently compresses its JSON tree for production/app apps. Here are the 
 
 ### Internal Quirks and Structural Observations
 *   **Search Constraints (`data_source.properties.constraints`)**: A Data Source of type `Search` stores its constraints as an indexed dictionary (e.g., `"0"`, `"1"`). Each constraint defines `key` (Field Name), `value` (The evaluated Bubble Expression), and `constraint_type` (e.g., "equals", "not contains").
+*   **Repeating Group "CELL" Pattern**: In Bubble's internal structure for Repeating Groups, the direct child of the RG is often a structural "CELL" group. This group typically uses an `ElementParent` data source. Because of Bubble's scope rules, inner elements use `GetElement` targeting the "CELL" group to maintain access to "Current Cell's Thing" data logic even when nested deeply within other containers.
 *   **Auto-Binding Inputs**: Inputs store Auto-Binding setup internally, identifying the target field via `bind_field` and whether a success notification is shown to a specific element by `alert_element`.
 *   **Reusable Element Parameters**: When looking at a Reusable Element instantiated on a page, Bubble handles custom properties/parameters via keys that prefix with `param_` (e.g., `param_cnSRm`), linking the internal definition variable to the provided expression `OneOptionValue`. 
+*   **Field Naming Grammar**: Method names (Messages) often follow a strict `{field_name}_{type_modifier}_{data_type}` suffix pattern (e.g., `tags_list_option_featureset_tag`).
 *   **Context-Dependent/False-Positive Keys**: When mapping JSON keys visually, be careful of "primitive collisions". If `height: 0` and `min_width: 0`, naive value-matching might associate `%h` with `min_width` instead of `height`. Furthermore, depending on an element's configuration (Fixed vs Responsive width), numerical property usages may shift significance under the hood.
 
 ---
@@ -157,7 +164,8 @@ In JSON, this looks like:
 | `GetElement` | References another element by ID | `properties.element_id` |
 | `Search` | "Do a Search for" query | `properties.constraints`, `properties.type_to_find`, `properties.sort_field`, `properties.descending` |
 | `PageData` | Page-level data (e.g., "Current Page Width") | `properties.name` |
-| `OneOptionValue` | A specific Option Set value | `properties.option_set`, `properties.option_value` |
+| `OneOptionValue` | A static Option Set value | `properties.option_set`, `properties.option_value` |
+| `OptionValue` | An Option Set value that supports chaining | Used when getting a property (like `.id0`) from an option. |
 | `PrimitiveLiteral` | A hardcoded literal value | `properties.value`, `properties.btype` (e.g., `sys.bool`) |
 | `TextExpression` | Text content with dynamic insertions | `entries` (indexed dictionary of strings and/or expression objects) |
 | `GetParamFromUrl` | URL parameter accessor | `properties.parameter_name` (a TextExpression) |
@@ -166,23 +174,34 @@ In JSON, this looks like:
 ### Message Names (Method Chaining)
 `Message` is the universal chaining type. Its `name` property defines the operation. Message names follow a naming convention that **encodes field names and their data types**:
 
-*   **Field accessors**: `email`, `team_custom_team` (field `team` of type `custom.team`), `current_seat_custom_seat`, `featuresets_list_custom_featureset` (list field)
+*   **Field accessors**: `email`, `_id` (Unique ID), `team_custom_team` (field `team` of type `custom.team`), `current_seat_custom_seat`, `featuresets_list_custom_featureset` (list field)
 *   **Data retrieval**: `get_group_data`, `get_list_data`
-*   **Comparisons**: `equals`, `less_than`, `is_empty`, `is_not_empty`, `contains`, `not_logged_in`
-*   **Boolean logic**: `and_`
-*   **List operations**: `merged_with`, `unique`, `sorted`
+*   **Comparisons**: `equals`, `less_than`, `is_empty`, `is_not_empty`, `contains`, `not_contains`, `not_logged_in`
+*   **Boolean logic**: `and_` (requires a boolean input; often preceded by `.is_true`)
+*   **Evaluators**: `is_true`, `is_hovered`
+*   **List operations**: `merged_with`, `unique`, `sorted`, `filtered`, `count`
+*   **ID accessors**: `id0` (specifically for unique IDs of records or options)
+
+### Boolean Chaining Flow
+When multiple conditions are joined, Bubble uses a pipeline flow. For example, "If [ParamX] is true AND [This Element] is hovered":
+1.  Start with `[GetElement]` targeting the param.
+2.  Call `.is_true` to resolve the param.
+3.  Chain `.and_` which takes a full `[ThisElement]` -> `.is_hovered` expression as its `args`.
 
 ### Args Patterns
 The `args` (or `%a`) property on a `Message` carries the argument to the operation. Its shape varies:
 
 | Pattern | Example | Meaning |
 | :--- | :--- | :--- |
-| Literal number | `"args": 468` | Direct numeric value (e.g., `.less_than(468)`) |
+| Literal number | `"args": 1` | Direct numeric value |
 | Literal string | `"args": "true"` | Direct string value |
-| Expression object | `"args": { "type": "OneOptionValue", ... }` | A full nested expression as the argument |
+| Expression object | `"args": { "type": "GetElement", ... }` | A full nested expression (common in `and_` or `contains`) |
 
 ### `is_slidable`
-This flag appears on most expression chain nodes. It is almost always `false`. The one confirmed exception is `.sorted()`, which has `is_slidable: true`. This likely indicates whether the operation's position in the chain can be reordered without changing the result.
+This flag appears on most expression chain nodes. It is almost always `false`. List-manipulation methods that change order or filter content, such as **`.sorted()`** and **`.filtered()`**, are notable exceptions where `is_slidable: true`.
+
+### Shared Architecture: Search vs. Filter
+The `Search` root type and the `.filtered` message name share the exact same **`constraints`** architecture. Both store logic rules in `properties.constraints` as an indexed dictionary of objects containing `key`, `value`, and `constraint_type`. This demonstrates that Bubble's querying engine is reused for both database and in-memory list operations.
 
 ### Where Expressions Live on an Element
 Expressions can appear in multiple locations within a single element's JSON:
@@ -197,6 +216,21 @@ Expressions can appear in multiple locations within a single element's JSON:
 
 ### Workflow Actions
 Workflow action expressions are **NOT** stored on the element itself. They are stored separately in Bubble's JSON tree. Inspecting a Button element, for example, will show its text and conditionals but not its click actions.
+
+---
+
+## 9. Custom States
+
+Custom States are stored in a `custom_states` dictionary on the element node. Each state consists of an internal ID (the key) and a configuration object:
+
+```json
+"is_checked_": {
+  "display": "is_checked",   // The user-friendly State Name
+  "value": "boolean",        // The data type
+  "default_val": false,      // Initial value
+  "make_static": true
+}
+```
 
 ---
 
