@@ -83,7 +83,7 @@ Bubble shrinks standard JSON keys into tiny symbols to save memory. Here is how 
 
 ## 6. Zombie Conditionals (State Arrays)
 
-When reading conditionals from the `states` (or `%s`) block via `child_names()`, be aware that Bubble **does not re-index** items if a user deletes a condition in the visual editor. 
+When reading conditionals from the `states` (or `%s`) block via `child_names()`, be aware that Bubble **does not re-index** items if a user deletes a condition in the visual editor. Furthermore, even in active sets, indices may be non-sequential (e.g., State 0 and State 2 with no State 1).
 
 If a user creates three conditions (indexes `0`, `1`, `2`) and deletes the first two, Bubble's `child_names()` will still return an array of `['0', '1', '2']`.
 
@@ -164,6 +164,7 @@ In JSON, this looks like:
 | `GetElement` | References another element by ID | `properties.element_id` |
 | `Search` | "Do a Search for" query | `properties.constraints`, `properties.type_to_find`, `properties.sort_field`, `properties.descending` |
 | `PageData` | Page-level data (e.g., "Current Page Width") | `properties.name` |
+| `Breakpoint` | A responsive breakpoint reference | `properties.breakpoint_id` |
 | `OneOptionValue` | A static Option Set value | `properties.option_set`, `properties.option_value` |
 | `OptionValue` | An Option Set value that supports chaining | Used when getting a property (like `.id0`) from an option. |
 | `PrimitiveLiteral` | A hardcoded literal value | `properties.value`, `properties.btype` (e.g., `sys.bool`) |
@@ -176,7 +177,7 @@ In JSON, this looks like:
 
 *   **Field accessors**: `email`, `_id` (Unique ID), `team_custom_team` (field `team` of type `custom.team`), `current_seat_custom_seat`, `featuresets_list_custom_featureset` (list field)
 *   **Data retrieval**: `get_group_data`, `get_list_data`
-*   **Comparisons**: `equals`, `less_than`, `is_empty`, `is_not_empty`, `contains`, `not_contains`, `not_logged_in`
+*   **Comparisons**: `equals`, `less_than`, `less_or_equal_than`, `is_empty`, `is_not_empty`, `contains`, `not_contains`, `not_logged_in`
 *   **Boolean logic**: `and_` (requires a boolean input; often preceded by `.is_true`)
 *   **Evaluators**: `is_true`, `is_hovered`
 *   **List operations**: `merged_with`, `unique`, `sorted`, `filtered`, `count`
