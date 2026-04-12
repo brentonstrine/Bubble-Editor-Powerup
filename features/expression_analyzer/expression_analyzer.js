@@ -34,6 +34,16 @@ window.loadedCodelessLoveScripts ||= {};
     
     // NEW: Schema Storage key
     const SCHEMA_KEY = 'CL_AppSchema';
+    const VERSION_KEY = 'CL_Version';
+    const CURRENT_VERSION = '2.0';
+
+    // Auto-Upgrade Logic: If we are not on the current version, wipe the old data.
+    if (localStorage.getItem(VERSION_KEY) !== CURRENT_VERSION) {
+        localStorage.removeItem('CL_ExpressionGraph');
+        localStorage.removeItem(SCHEMA_KEY);
+        localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+        console.log("❤️ [Expression Analyzer] Auto-upgraded to Version 2.0. Legacy data wiped for a clean slate.");
+    }
     
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
@@ -85,21 +95,30 @@ window.loadedCodelessLoveScripts ||= {};
             'Number':  ['>', '<', '≥', '≤', '+', '-', '*', '/', '^', 'rounded to', 'floor', 'ceiling'],
             'Text':    [':uppercase', ':lowercase', ':capitalized words', ':split by...', 'append', 'truncated to'],
             'List':    [':count', ':first item', ':last item', ':filter', ':sorted', ':unique elements', 'merged with', 'intersect with'],
-            'Boolean': ['and', 'or', 'is yes', 'is no']
+            'Boolean': ['and', 'or', 'is yes', 'is no'],
+            'Single':  ["'s Creator", "'s Slug", "'s Creation Date", "'s Modified Date", "'s unique id", "'s link"]
         };
 
         function categorizeOptions(scraped) {
             const labels = scraped.map(s => s.label);
-            const counts = { 'Number': 0, 'Text': 0, 'List': 0, 'Boolean': 0 };
+            const counts = { 'Number': 0, 'Text': 0, 'List': 0, 'Boolean': 0, 'Single': 0 };
             
+            // 1. check hardcoded triggers
             for (const [cat, triggers] of Object.entries(CATEGORY_MAP)) {
                 for (const trigger of triggers) {
                     if (labels.includes(trigger)) counts[cat]++;
                 }
             }
+
+            // 2. check property patterns (very high signal for custom types)
+            labels.forEach(l => {
+                if (l.startsWith("'s "))           counts['Single'] += 2; // Weight higher than individual ops
+                if (l.startsWith(":each item's ")) counts['List'] += 2;
+            });
             
             const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-            return sorted[0][1] > 0 ? sorted[0][0] : 'Unknown';
+            const top = sorted[0];
+            return top[1] > 0 ? top[0] : 'Unknown';
         }
 
         // ─── Phase 2.5: Scrape all visible labels immediately ─────────────
@@ -319,13 +338,18 @@ window.loadedCodelessLoveScripts ||= {};
             
             let level = 0;
             if (optionData || genericOptionData) {
+                // 1. Specific Level (how deep we've explored this EXACT operator in this EXACT LHO)
                 const levelSpecific = optionData ? getOptionLevel(optionData, graph) : 0;
                 
-                // An operator is "Universal" if it has been seen in at least 2 different LHOs of this category.
-                // Property placeholders like "'s [Property]" will hit this threshold immediately across data types.
+                // 2. Generic Level (Universal Pattern Recognition)
+                let levelGeneric = 0;
                 const isUniversal = (genericOptionData?.lhoSources?.length || 0) >= 2;
-                const levelGeneric = (genericOptionData && isUniversal) 
-                                    ? getOptionLevel(genericOptionData, graph) : 0;
+                if (isUniversal) {
+                    // Pattern-Aware Logic: 
+                    // - If seen in 2+ places but not clicked: Level 3 (Yellow)
+                    // - If seen in 2+ places AND clicked (anywhere globally): Level 4 (Green)
+                    levelGeneric = genericOptionData.clicked ? 4 : 3;
+                }
                 
                 level = Math.max(levelSpecific, levelGeneric);
             }
@@ -425,8 +449,6 @@ window.loadedCodelessLoveScripts ||= {};
                     genericEntry.options[gLabel] = { label: gLabel, clicked: false, lhoSources: [] };
                 }
                 const genOpt = genericEntry.options[gLabel];
-                if (!genOpt.lhoSources) genOpt.lhoSources = [];
-                
                 if (!genOpt.lhoSources.includes(keys.specific)) {
                     genOpt.lhoSources.push(keys.specific);
                     if (genOpt.lhoSources.length > 5) genOpt.lhoSources.shift();
@@ -452,9 +474,6 @@ window.loadedCodelessLoveScripts ||= {};
             const l = (key === keys.generic) ? getGenericLabel(uiLabel) : uiLabel;
             const existing = graph[key].options[l] || { label: l, clicked: false, lhoSources: [] };
             
-            // Migration fix for clicking old data
-            if (key === keys.generic && !existing.lhoSources) existing.lhoSources = [keys.specific];
-
             const currentAliases = existing.searchAliases || [];
             if (searchAlias && !currentAliases.includes(searchAlias)) {
                 currentAliases.push(searchAlias);
@@ -555,6 +574,17 @@ window.loadedCodelessLoveScripts ||= {};
         console.log("Stringified:", stringified);
         console.groupEnd();
         return stringified;
+    };
+
+    window.CL_ClearData = function() {
+        if (confirm("Are you sure you want to erase ALL recorded expression and schema data? This cannot be undone.")) {
+            localStorage.removeItem(STORE_KEY);
+            localStorage.removeItem(SCHEMA_KEY);
+            localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+            console.log("❤️ [Expression Analyzer] Data Erased. Starting clean for Version 2.0.");
+            return true;
+        }
+        return false;
     };
 
     observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
