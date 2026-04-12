@@ -120,29 +120,42 @@ window.addEventListener('message', function (event) {
 
                 const type = cache['%x'] || cache['type'];
                 let customName = cache['%nm']; // Custom user-defined name
-                let defaultName = cache['%dn']; // Bubble default name
-
+                let defaultName = cache['%dn'] || cache['default_name']; // Bubble default name
+                
                 // Smart fallbacks based on inner properties
                 let secondaryName = null;
-                const props = cache['%p'] || {};
-                if (type === 'Text') {
-                  const t = props['text'] || props['text_for_display'] || props['content'];
+                const props = cache['%p'] || cache['properties'] || {};
+                
+              if (type === 'Text') {
+                  const t = props['%3'] || props['text'] || props['text_for_display'] || props['content'];
                   let rawText = "";
                   if (typeof t === 'string') rawText = t;
-                  else if (t && t.entries) rawText = Object.values(t.entries).map(e => (typeof e === 'string' ? e : "")).join(" ");
-                  if (rawText.trim()) secondaryName = "Text " + rawText.trim().substring(0, 20).replace(/\s+/g, ' ');
-                } else if (type === 'Icon' || type === 'MaterialIcon') {
+                  else {
+                    const entries = t?.['%e'] || t?.entries || t;
+                    if (entries && typeof entries === 'object') {
+                      rawText = Object.values(entries).filter(v => typeof v === 'string').join(" ");
+                    }
+                  }
+                  if (rawText.trim()) secondaryName = "Text " + (rawText.trim().length > 25 ? rawText.trim().substring(0, 25) + "..." : rawText.trim()).replace(/\s+/g, ' ');
+              } else if (type === 'Icon' || type === 'MaterialIcon') {
                   const ico = props['icon'] || props['material_icon'] || props['icon_name'];
                   if (typeof ico === 'string') secondaryName = "Icon " + ico;
-                } else if (['Group', 'RepeatingGroup', 'Popup', 'FloatingGroup'].includes(type)) {
-                  const subtype = props['group_type'] || props['type_of_thing'] || props['content_type'] || props['type'];
-                  if (typeof subtype === 'string' && !subtype.includes('_default_')) secondaryName = type + " " + subtype;
+              } else if (type === 'Button') {
+                  const label = props['%cap'] || props['caption'] || props['text'];
+                  if (typeof label === 'string') secondaryName = "Button " + label;
+              } else if (type?.includes('Input')) {
+                  const placeholder = props['placeholder'] || props['initial_value'];
+                  if (typeof placeholder === 'string') secondaryName = type + " (" + placeholder + ")";
+              } else if (['Group', 'RepeatingGroup', 'Popup', 'FloatingGroup'].includes(type)) {
+                  const subtype = props['%gt'] || props['group_type'] || props['type_of_thing'] || props['content_type'] || props['type'];
+                  if (typeof subtype === 'string' && !subtype.includes('_default_')) secondaryName = type + " [" + subtype + "]";
+              } else if (type === 'CustomDefinition') {
+                    secondaryName = "Reusable: " + (cache['__name'] || "Element");
                 }
 
                 let displayName = customName || secondaryName || defaultName || type;
-                if (type === 'CustomDefinition' && !customName) {
-                  displayName = "Reusable: " + (cache['__name'] || "Element");
-                }
+                // Final fallback if everything is empty or generic
+                if (displayName === type && cache['_id']) displayName += " " + cache['_id'];
 
                 // Strictly traverse element containers to maintain "Order of Appearance"
                 let elNode = node.child('%el');
