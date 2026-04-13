@@ -131,6 +131,7 @@ window.loadedCodelessLoveScripts ||= {};
                 label: el.querySelector('.dropdown-item')?.firstChild?.textContent?.trim()
                        ?? el.textContent.trim(),
                 disabled: el.classList.contains('disabled'),
+                isElement: !!el.closest('.section.Elements')
             }))
             .filter(({ label }) => !PHANTOM_LABELS.has(label));
 
@@ -332,7 +333,8 @@ window.loadedCodelessLoveScripts ||= {};
 
             const labelEl = container.querySelector('.dropdown-item');
             const label = labelEl?.firstChild?.textContent?.trim() ?? container.textContent.trim();
-            const gLabel = getGenericLabel(label);
+            const isElement = !!container.closest('.section.Elements');
+            const gLabel = getGenericLabel(label, isElement);
             const optionData = entry.options[label];
             const genericOptionData = genericEntry?.options?.[gLabel];
             
@@ -343,12 +345,12 @@ window.loadedCodelessLoveScripts ||= {};
                 
                 // 2. Generic Level (Universal Pattern Recognition)
                 let levelGeneric = 0;
-                const isUniversal = (genericOptionData?.lhoSources?.length || 0) >= 2;
+                const isUniversal = isElement || (genericOptionData?.lhoSources?.length || 0) >= 2;
                 if (isUniversal) {
                     // Pattern-Aware Logic: 
                     // - If seen in 2+ places but not clicked: Level 3 (Yellow)
                     // - If seen in 2+ places AND clicked (anywhere globally): Level 4 (Green)
-                    levelGeneric = genericOptionData.clicked ? 4 : 3;
+                    levelGeneric = genericOptionData?.clicked ? 4 : 3;
                 }
                 
                 level = Math.max(levelSpecific, levelGeneric);
@@ -402,7 +404,8 @@ window.loadedCodelessLoveScripts ||= {};
         return { specific, generic };
     }
 
-    function getGenericLabel(label) {
+    function getGenericLabel(label, isElement = false) {
+        if (isElement) return "[[Element]]";
         if (!label) return label;
         if (label.startsWith("'s ")) return "'s [Property]";
         if (label.startsWith(":each item's ")) return ":each item's [Property]";
@@ -436,15 +439,15 @@ window.loadedCodelessLoveScripts ||= {};
         }
         const genericEntry = keys.generic ? graph[keys.generic] : null;
 
-        for (const { label, disabled } of scraped) {
-            // 1. Persist in specific (the actual field name)
+        for (const { label, disabled, isElement } of scraped) {
+            // 1. Persist in specific (the actual element name)
             if (!specificEntry.options[label]) {
                 specificEntry.options[label] = { label, operatorKey: null, datasourceKey: null, disabled };
             }
 
             // 2. Persist in generic (the abstracted pattern)
             if (genericEntry) {
-                const gLabel = getGenericLabel(label);
+                const gLabel = getGenericLabel(label, isElement);
                 if (!genericEntry.options[gLabel]) {
                     genericEntry.options[gLabel] = { label: gLabel, clicked: false, lhoSources: [] };
                 }
@@ -461,7 +464,7 @@ window.loadedCodelessLoveScripts ||= {};
     }
                                                         
     /** Phase 4.5 — enrich a label with its internal operator/datasource key after a click. */
-    function recordSelectedKey(lho, uiLabel, operatorKey, datasourceKey, isLeaf = false, searchAlias = '') {
+    function recordSelectedKey(lho, uiLabel, operatorKey, datasourceKey, isLeaf = false, searchAlias = '', isElement = false) {
         const keys = lhoKeys(lho);
         if (!keys.specific) return;
         const graph = loadGraph();
@@ -471,7 +474,7 @@ window.loadedCodelessLoveScripts ||= {};
             if (!graph[key]) graph[key] = { lho, options: {} };
 
             // For the generic entry, we use the abstracted label
-            const l = (key === keys.generic) ? getGenericLabel(uiLabel) : uiLabel;
+            const l = (key === keys.generic) ? getGenericLabel(uiLabel, isElement) : uiLabel;
             const existing = graph[key].options[l] || { label: l, clicked: false, lhoSources: [] };
             
             const currentAliases = existing.searchAliases || [];
@@ -509,6 +512,7 @@ window.loadedCodelessLoveScripts ||= {};
         // Capture label immediately (before Bubble's DOM rewrite)
         const labelEl = item.querySelector('.dropdown-item');
         const uiLabel = labelEl?.firstChild?.textContent?.trim() ?? item.textContent.trim();
+        const isElement = !!item.closest('.section.Elements');
 
         console.log('❤️ [Expression Analyzer] Phase 4.4 ✅ mousedown on item:', uiLabel);
 
@@ -545,12 +549,12 @@ window.loadedCodelessLoveScripts ||= {};
                 const beforeCount = before.get(key) || 0;
                 if (afterCount > beforeCount) {
                     const [opKey, dsKey] = key.split('|');
-                    recordSelectedKey(lho, uiLabel, opKey || null, dsKey || null, false, search);
+                    recordSelectedKey(lho, uiLabel, opKey || null, dsKey || null, false, search, isElement);
                     return;
                 }
             }
             console.log('❤️ [Expression Analyzer] Phase 4.5 ℹ️ No new spot key found 300ms after click (likely a literal value). Before:', before, 'After:', after);
-            recordSelectedKey(lho, uiLabel, null, null, true, search);
+            recordSelectedKey(lho, uiLabel, null, null, true, search, isElement);
         }, 300);
 
     }, true /* capture phase */);
