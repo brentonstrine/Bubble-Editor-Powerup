@@ -215,6 +215,11 @@ window.addEventListener('message', function (event) {
                   rawLabel: displayName,
                   val: {
                     type: 'GetElement',
+                    elementType: type,   // e.g. 'Group', 'RepeatingGroup', 'Input', 'Checkbox'
+                    contentType: (() => { // e.g. 'custom.user', 'text', null
+                      const p = cache['%p'] || cache['properties'] || {};
+                      return p['%gt'] || p['group_type'] || p['type_of_thing'] || p['content_type'] || null;
+                    })(),
                     properties: { element_id: childId }
                   }
                 });

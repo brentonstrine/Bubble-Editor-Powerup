@@ -1064,6 +1064,35 @@ window.loadedCodelessLoveScripts ||= {};
         }
         return opDef.ret;
       }
+
+      // PROPERTY-CHAIN FALLBACK: Decode Bubble's suffix-based property naming convention.
+      // e.g. "name_text" → 'text', "account_custom_account" → 'custom',
+      //      "tags_list_custom_tag" → 'List<custom>', "score_number" → 'number'.
+      // Also handles list-element properties that start with "list_": skip that prefix first.
+      const propName = rawData.name || '';
+      if (propName) {
+        // Strip "list_" prefix so list-field names resolve the same way
+        const normalizedName = propName.startsWith('list_') ? propName.slice(5) : propName;
+        if (normalizedName.includes('_list_custom_')) return 'List<custom>';
+        if (normalizedName.includes('_list_text'))    return 'List<text>';
+        if (normalizedName.includes('_list_number'))  return 'List<number>';
+        if (normalizedName.includes('_list_boolean')) return 'List<boolean>';
+        if (normalizedName.includes('_list_date'))    return 'List<date>';
+        if (normalizedName.includes('_list_user'))    return 'List<user>';
+        if (normalizedName.includes('_list_file'))    return 'List<file>';
+        if (normalizedName.includes('_custom_'))      return 'custom';
+        if (normalizedName.endsWith('_text'))         return 'text';
+        if (normalizedName.endsWith('_number'))       return 'number';
+        if (normalizedName.endsWith('_boolean'))      return 'boolean';
+        if (normalizedName.endsWith('_date'))         return 'date';
+        if (normalizedName.endsWith('_user'))         return 'user';
+        if (normalizedName.endsWith('_file'))         return 'file';
+        if (normalizedName.endsWith('_image'))        return 'image';
+        if (normalizedName.endsWith('_address'))      return 'address';
+        if (normalizedName.endsWith('_point'))        return 'point';
+        // If no suffix matched, this is still a dynamic property — treat as 'custom' (not error)
+        return 'custom';
+      }
       return 'error';
     }
 
@@ -1383,7 +1412,13 @@ window.loadedCodelessLoveScripts ||= {};
           const leftType = getComputedType(prevToken);
           const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
 
-          if (!schemaKey || !BUBBLE_SCHEMA[schemaKey] || !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
+          // Only flag invalid-syntax if the schema key is a known primitive type AND
+          // the operator isn't in that schema. Skip validation for custom/dynamic types
+          // (e.g. property-to-children chains like CurrentUser → account_custom_account → name_text)
+          // because those resolve via the property-naming suffix convention, not BUBBLE_SCHEMA.
+          const isKnownPrimitive = schemaKey && BUBBLE_SCHEMA[schemaKey];
+          const isDynamic = !isKnownPrimitive; // custom types, unknown types, etc.
+          if (!isDynamic && !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
             if (beforeUI) beforeUI.classList.add('invalid-syntax');
           }
         }
