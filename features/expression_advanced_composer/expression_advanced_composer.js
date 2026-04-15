@@ -1030,6 +1030,23 @@ window.loadedCodelessLoveScripts ||= {};
     }
   ];
 
+  // Returns true if opName follows Bubble's dynamic property naming convention:
+  // e.g. "name_text", "account_custom_account", "tags_list_custom_tag".
+  // These are never in BUBBLE_SCHEMA and should never be flagged as invalid.
+  function isDynamicPropertyName(opName) {
+    if (!opName) return false;
+    const n = opName.startsWith('list_') ? opName.slice(5) : opName;
+    return n.includes('_list_custom_') || n.includes('_list_text')    ||
+           n.includes('_list_number')  || n.includes('_list_boolean') ||
+           n.includes('_list_date')    || n.includes('_list_user')    ||
+           n.includes('_list_file')    || n.includes('_custom_')      ||
+           n.endsWith('_text')    || n.endsWith('_number')  ||
+           n.endsWith('_boolean') || n.endsWith('_date')    ||
+           n.endsWith('_user')    || n.endsWith('_file')    ||
+           n.endsWith('_image')   || n.endsWith('_address') ||
+           n.endsWith('_point');
+  }
+
   function getComputedType(tokenEl) {
     if (!tokenEl) return null;
     const rawData = JSON.parse(tokenEl.dataset.bubbleJson || "{}");
@@ -1412,13 +1429,15 @@ window.loadedCodelessLoveScripts ||= {};
           const leftType = getComputedType(prevToken);
           const schemaKey = (leftType && leftType.startsWith('List<')) ? 'List' : leftType;
 
-          // Only flag invalid-syntax if the schema key is a known primitive type AND
-          // the operator isn't in that schema. Skip validation for custom/dynamic types
-          // (e.g. property-to-children chains like CurrentUser → account_custom_account → name_text)
-          // because those resolve via the property-naming suffix convention, not BUBBLE_SCHEMA.
+          // Only flag invalid-syntax when ALL of these are true:
+          // 1. The left type resolves to a known schema (e.g. 'user', 'text', 'number').
+          // 2. The operator name is NOT a Bubble dynamic property (suffix convention).
+          // 3. The operator name is not found in that schema.
+          // This allows property-to-children chains like CurrentUser → account_custom_account
+          // on any type, not just unknown/custom types.
           const isKnownPrimitive = schemaKey && BUBBLE_SCHEMA[schemaKey];
-          const isDynamic = !isKnownPrimitive; // custom types, unknown types, etc.
-          if (!isDynamic && !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
+          const isPropChain = isDynamicPropertyName(rawData.name);
+          if (isKnownPrimitive && !isPropChain && !BUBBLE_SCHEMA[schemaKey].find(o => o.op === rawData.name)) {
             if (beforeUI) beforeUI.classList.add('invalid-syntax');
           }
         }
