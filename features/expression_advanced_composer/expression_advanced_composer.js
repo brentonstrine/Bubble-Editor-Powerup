@@ -955,8 +955,8 @@ window.loadedCodelessLoveScripts ||= {};
       { op: "format_number", arg: "null", ret: "text", label: ":formatted as..." }
     ],
     "sys.bool": [
-      { op: "and_", arg: "sys.bool", ret: "sys.bool", label: "and" },
-      { op: "or_", arg: "sys.bool", ret: "sys.bool", label: "or" },
+      { op: "and", arg: "null", ret: "sys.bool", label: "and" },
+      { op: "or", arg: "null", ret: "sys.bool", label: "or" },
       { op: "is_true", arg: "null", ret: "sys.bool", label: "is yes" },
       { op: "is_false", arg: "null", ret: "sys.bool", label: "is no" },
       {
@@ -1170,7 +1170,16 @@ window.loadedCodelessLoveScripts ||= {};
     // For a token, the token to its left is previousElementSibling (which is a slot) -> previousElementSibling
     const referenceToken = isSlot ? anchor.previousElementSibling : anchor.previousElementSibling?.previousElementSibling;
 
-    if (!referenceToken || !referenceToken.classList.contains('cl-token')) {
+    let isResetter = false;
+    if (referenceToken && referenceToken.classList.contains('cl-token')) {
+      const rawData = JSON.parse(referenceToken.dataset.bubbleJson || "{}");
+      // And/Or act as "Chain Resetters" - the next slot starts a fresh expression root
+      if (rawData.name === 'and' || rawData.name === 'or') {
+        isResetter = true;
+      }
+    }
+
+    if (!referenceToken || !referenceToken.classList.contains('cl-token') || isResetter) {
       const title = isSlot ? "Data Sources" : "Replace Data Source";
       addDropdownItems(activeDropdown, title, DATA_SOURCES.map(d => ({ label: d.label, val: d })));
 
