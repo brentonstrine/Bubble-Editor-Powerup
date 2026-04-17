@@ -95,13 +95,12 @@ body {
     &.property-editor-row.property-editor-row.property-editor-row.property-editor-row.property-editor-row.property-editor-row {
 
 
-
-
-
       /* 
     Expression Syntax Highlighting (Attribute-Based)
     Groups Bubble components into 7 stable color categories.
-*/
+    */
+
+      /* 0. BLACK: Data Sources (Roots) */
       [data-prop-name="next"]:not([data-datasource-name]):not([data-operator-name]) {
         color: black;
       }
@@ -111,8 +110,12 @@ body {
       [data-datasource-name="Search"],
       [data-datasource-name="GetElement"],
       [data-datasource-name="GetParamFromUrl"] {
-        color: rgb(10, 105, 230) !important;
-        font-weight: bold;
+
+        &,
+        & * {
+          color: rgb(10, 105, 230) !important;
+          font-weight: bold;
+        }
       }
 
       /* 2. DODGER BLUE: Property Accessors ('s) */
@@ -121,18 +124,39 @@ body {
       [data-operator-name*="_image"],
       [data-operator-name*="_date"],
       [data-operator-name*="_boolean"],
-      [data-operator-name="get_data"],
-      [data-operator-name="get_group_data"],
-      [data-operator-name="get_list_data"],
+      [data-operator-name^="get_"],
+      /* width, height, data, group_data, list_data, loading_status, place_name, upload_percent... */
       [data-operator-name="url"],
       [data-operator-name="email"],
-      [data-operator-name="selected_choices"] {
-        color: rgb(30, 144, 255) !important;
+      [data-operator-name="slug"],
+      [data-operator-name="selected_choices"],
+      [data-operator-name="page_number"],
+      [data-operator-name="id_link"] {
+
+        /* 's link */
+        &,
+        & * {
+          color: rgb(30, 144, 255) !important;
+        }
       }
 
       /* 3. GREEN: Chained Operators (:) */
+      [data-operator-name^="to_"],
+      /* uppercase, lowercase, capitalized, range, base64... */
+      [data-operator-name^="plus_"],
+      /* items, seconds, minutes, hours, days, months, years */
+      [data-operator-name^="change_"],
+      /* seconds, minutes, hours, time, date, month, years */
+      [data-operator-name^="format_"],
+      /* boolean, number, date, text (e.g. :formatted as) */
       [data-operator-name="count"],
+      [data-operator-name="length"],
       [data-operator-name="approximate_count"],
+      [data-operator-name="sum"],
+      [data-operator-name="average"],
+      [data-operator-name="median"],
+      [data-operator-name="min"],
+      [data-operator-name="max"],
       [data-operator-name="first_element"],
       [data-operator-name="last_element"],
       [data-operator-name="random_element"],
@@ -141,35 +165,60 @@ body {
       [data-operator-name="list_from"],
       [data-operator-name="unique"],
       [data-operator-name="make_static"],
-      [data-operator-name="convert_to_number"],
-      [data-operator-name="to_base64"],
-      [data-operator-name="to_uppercase"],
-      [data-operator-name="to_lowercase"],
-      [data-operator-name="to_capitalized"],
+      [data-operator-name="trimmed"],
+      [data-operator-name^="truncated"],
+      [data-operator-name="split_by"],
+      [data-operator-name="find_replace"],
+      [data-operator-name="format_as_text"],
+      [data-operator-name="round"],
+      [data-operator-name="floor"],
+      [data-operator-name="ceil"],
+      [data-operator-name="extract_from_date"],
+      [data-operator-name="rounded_down"],
       [data-datasource-name="Message"] {
-        /* Configuration Ops like :filtered */
-        color: rgb(0, 128, 0) !important;
+
+        /* Slidable popover ops like :filtered, :group by, :formatted as text */
+        &,
+        & * {
+          color: rgb(0, 128, 0) !important;
+        }
       }
 
       /* 4. PURPLE: Infix Operators (Math/List) */
-      [data-operator-name="plus_element"],
-      [data-operator-name="minus_element"],
+      [data-operator-name="plus"],
+      [data-operator-name="minus"],
+      [data-operator-name="times"],
+      [data-operator-name="divide"],
+      [data-operator-name="power"],
+      [data-operator-name="modulo"],
       [data-operator-name="merged_with"],
       [data-operator-name="intersect_with"],
       [data-operator-name="minus_list"] {
-        color: rgb(128, 0, 128) !important;
+
+        &,
+        & * {
+          color: rgb(128, 0, 128) !important;
+        }
       }
 
       /* 5. RED: Logical Operators */
       [data-operator-name="and_"],
       [data-operator-name="or_"] {
-        color: rgb(255, 0, 0) !important;
-        font-weight: bold;
+
+        &,
+        & * {
+          color: rgb(255, 0, 0) !important;
+          font-weight: bold;
+        }
       }
 
       /* 6. MAGENTA: Comparisons */
       [data-operator-name="equals"],
       [data-operator-name="not_equals"],
+      [data-operator-name="greater_than"],
+      [data-operator-name="greater_or_equal_than"],
+      [data-operator-name="less_than"],
+      [data-operator-name="less_or_equal_than"],
       [data-operator-name="contains"],
       [data-operator-name="not_contains"],
       [data-operator-name="contains_list"],
@@ -177,35 +226,58 @@ body {
       [data-operator-name="is_not_empty"],
       [data-operator-name="is_true"],
       [data-operator-name="is_false"],
-      [data-operator-name="is_visible"],
-      [data-operator-name="isnt_visible"] {
-        color: rgb(255, 0, 255) !important;
+      [data-operator-name^="is_"],
+      /* visible, valid, clickable, hovered, pressed, focused, first_page... */
+      [data-operator-name^="isnt_"],
+      [data-operator-name^="range_"] {
+
+        /* range_contains, range_overlaps... */
+        &,
+        & * {
+          color: rgb(255, 0, 255) !important;
+        }
       }
 
       /* 7. ORANGE: Literals and Static Values */
       .dynamic.literal,
       [data-operator-name="literal"] {
-        color: rgb(255, 165, 0) !important;
+
+        &,
+        & * {
+          color: rgb(255, 165, 0) !important;
+        }
       }
 
       /* Structural: Parentheses & Add Buttons */
       .spot.parens {
-        color: #888;
+
+        &,
+        & * {
+          color: #888;
+        }
       }
 
       .dropdown-caption.add-button {
-        color: #ccc;
-        font-style: italic;
+
+        &,
+        & * {
+          color: #ccc;
+          font-style: italic;
+        }
+
       }
 
-    }
+      .nested.draft-state {
+        background-color: transparent;
+        border: solid 1px var(--b-orange-30);
+      }
 
-    /* Heart Indicator */
-    .expression-composer>div[style]:after {
-      content: "❤️";
-      font-size: 4px;
-      position: relative;
-      top: -6px;
+      /* Heart Indicator */
+      .expression-composer>div[style]:after {
+        content: "❤️";
+        font-size: 4px;
+        position: relative;
+        top: -6px;
+      }
     }
   }
-}
