@@ -1,28 +1,32 @@
 /* Expression Syntax Highlighting */
-❤️ codelesslove, body {
+❤️ codelesslove,
+body {
+
   .property-editor.property-editor.property-editor,
   .composer.composer.composer,
   .expression-composer.expression-composer.expression-composer,
-  .property-editor-row.property-editor-row.property-editor-row {/* EASB: Explicitly Arbitrary Specificity booster. Repeat class multipel times to boost specificicty of this selector without adding unintended semantics. */
+  .property-editor-row.property-editor-row.property-editor-row {
+    /* EASB: Explicitly Arbitrary Specificity booster. Repeat class multipel times to boost specificicty of this selector without adding unintended semantics. */
 
     /* Generic Infix Property (overwritten in some more specific cases below) */
     .nested span[data-prop-name=next] {
-        color: purple;
+      color: purple;
     }
 
     /* Data Sources are Blue */
     /* These aren't 100% accurate but problems should be corrected by injected ❤️ classes below */
     /* EASB */
-    .nested span[data-prop-name="0"], 
-    .nested span[data-prop-name^="1"], 
-    .nested span[data-prop-name^="2"], 
-    .nested span[data-prop-name^="3"], 
-    .nested span[data-prop-name^="4"], 
-    .nested span[data-prop-name^="5"], 
-    .nested span[data-prop-name^="6"], 
-    .nested span[data-prop-name^="7"], 
-    .nested span[data-prop-name^="8"], 
-    .nested span[data-prop-name^="9"], /* we need to match any arbitrary number, the workaround is to check if it starts with any digit. hopefully this is safe. */
+    .nested span[data-prop-name="0"],
+    .nested span[data-prop-name^="1"],
+    .nested span[data-prop-name^="2"],
+    .nested span[data-prop-name^="3"],
+    .nested span[data-prop-name^="4"],
+    .nested span[data-prop-name^="5"],
+    .nested span[data-prop-name^="6"],
+    .nested span[data-prop-name^="7"],
+    .nested span[data-prop-name^="8"],
+    .nested span[data-prop-name^="9"],
+    /* we need to match any arbitrary number, the workaround is to check if it starts with any digit. hopefully this is safe. */
     .nested span[data-prop-name^=arg],
     .nested span[data-prop-name=args],
     .nested span[data-prop-name=date],
@@ -32,14 +36,15 @@
     .nested span[data-prop-name=to_change],
     .nested span[data-prop-name=condition],
     .nested span[data-prop-name=data_source] {
-        color: rgb(10, 105, 230);
-        font-weight: 700;
+      color: rgb(10, 105, 230);
+      font-weight: 700;
     }
 
     /* Literals are Orange */
     /* EASB */
-    .nested.nested span.dynamic.literal { /* don't be tempted to put a ❤️ here */
-        color: orange;
+    .nested.nested span.dynamic.literal {
+      /* don't be tempted to put a ❤️ here */
+      color: orange;
     }
 
     /* Property Accessors */
@@ -47,6 +52,7 @@
     .nested.nested span.❤️property {
       color: dodgerblue;
     }
+
     /* Chained Operators */
     /* EASB */
     .nested.nested span.❤️chained {
@@ -68,13 +74,235 @@
 
       margin: 0 .5em;
     }
+
+    /* New Expression Highlighting */
+
+
+    &.property-editor.property-editor.property-editor.property-editor.property-editor.property-editor,
+    &.composer.composer.composer.composer.composer.composer,
+    &.expression-composer.expression-composer.expression-composer.expression-composer.expression-composer.expression-composer,
+    &.property-editor-row.property-editor-row.property-editor-row.property-editor-row.property-editor-row.property-editor-row {
+
+
+      /* 
+    Expression Syntax Highlighting (Attribute-Based)
+    Groups Bubble components into 7 stable color categories.
+    */
+
+      /* 0. BLACK: Data Sources (Roots) */
+      [data-prop-name="next"]:not([data-datasource-name]):not([data-operator-name]) {
+        color: black;
+      }
+
+      /* 1. BLUE: Data Sources (Roots) */
+      [data-datasource-name]:not([data-datasource-name="Message"]):not([data-datasource-name="PreviousStep"]),
+      [data-datasource-name="Search"],
+      [data-datasource-name="GetElement"],
+      [data-datasource-name="GetParamFromUrl"],
+      [data-datasource-name="PreviousStep"] {
+
+        &,
+        & * {
+          color: rgb(10, 105, 230) !important;
+          font-weight: bold;
+        }
+      }
+
+      /* 2. DODGER BLUE: Property Accessors ('s) */
+      [data-operator-name*="_custom_"],
+      [data-operator-name*="_text"],
+      [data-operator-name*="_image"],
+      [data-operator-name*="_date"],
+      [data-operator-name*="_boolean"],
+      [data-operator-name^="get_"],
+      /* width, height, data, group_data, list_data, loading_status, place_name, upload_percent... */
+      [data-operator-name="url"],
+      [data-operator-name="email"],
+      [data-operator-name="slug"],
+      [data-operator-name="active_subscriptions"],
+      [data-operator-name="snap_current"],
+      [data-operator-name="snap_default"],
+      [data-operator-name="selected_choices"],
+      [data-operator-name="page_number"],
+      [data-operator-name="id_link"],
+      /* 's link */
+      [data-operator-name="_id"] {
+
+        &,
+        & * {
+          color: rgb(30, 144, 255) !important;
+        }
+      }
+
+      /* 3. GREEN: Chained Operators (:) */
+      [data-operator-name^="to_"],
+      /* uppercase, lowercase, capitalized, range, base64... */
+      [data-operator-name^="plus_"],
+      /* items, seconds, minutes, hours, days, months, years */
+      [data-operator-name^="change_"],
+      /* seconds, minutes, hours, time, date, month, years */
+      [data-operator-name^="format_"],
+      /* boolean, number, date, text (e.g. :formatted as) */
+      [data-operator-name="count"],
+      [data-operator-name="length"],
+      [data-operator-name="approximate_count"],
+      [data-operator-name="sum"],
+      [data-operator-name="average"],
+      [data-operator-name="median"],
+      [data-operator-name="min"],
+      [data-operator-name="max"],
+      [data-operator-name="first_element"],
+      [data-operator-name="last_element"],
+      [data-operator-name="random_element"],
+      [data-operator-name="specific_item"],
+      [data-operator-name="limit_to"],
+      [data-operator-name="list_from"],
+      [data-operator-name="unique"],
+      [data-operator-name="make_static"],
+      [data-operator-name="plus_element"],
+      [data-operator-name="minus_element"],
+      [data-operator-name="trimmed"],
+      [data-operator-name^="truncated"],
+      [data-operator-name="split_by"],
+      [data-operator-name="find_replace"],
+      [data-operator-name="format_as_text"],
+      [data-operator-name^="formatted_"],
+      /* address, as_json_safe... */
+      [data-operator-name$="_link"],
+      /* google_map_link, apple_map_link, id_link... */
+      [data-operator-name="round"],
+      [data-operator-name="floor"],
+      [data-operator-name="ceil"],
+      [data-operator-name="distance_from"],
+      [data-operator-name="imgix_treatment"],
+      [data-operator-name="ranked_by"],
+      [data-operator-name^="extract_"],
+      /* from_date, from_text, regex... */
+      [data-operator-name="rounded_down"],
+      [data-datasource-name="Message"],
+      [data-operator-name="saved_s3"],
+      [data-operator-name="file_name"] {
+
+        /* Slidable popover ops like :filtered, :group by, :formatted as text */
+        &,
+        & * {
+          color: rgb(0, 128, 0) !important;
+        }
+      }
+
+      /* 4. PURPLE: Infix Operators (Math/List) */
+      [data-operator-name="plus"],
+      [data-operator-name="minus"],
+      [data-operator-name="times"],
+      [data-operator-name="divide"],
+      [data-operator-name="power"],
+      [data-operator-name="modulo"],
+      [data-operator-name="merged_with"],
+      [data-operator-name="intersect_with"],
+      [data-operator-name="minus_list"] {
+
+        &,
+        & * {
+          color: rgb(128, 0, 128) !important;
+        }
+      }
+
+      /* 5. RED: Logical Operators */
+      [data-operator-name="and_"],
+      [data-operator-name="or_"] {
+
+        &,
+        & * {
+          color: rgb(255, 0, 0) !important;
+          font-weight: bold;
+        }
+      }
+
+      /* 6. MAGENTA: Comparisons */
+      [data-operator-name="equals"],
+      [data-operator-name="not_equals"],
+      [data-operator-name="greater_than"],
+      [data-operator-name="greater_or_equal_than"],
+      [data-operator-name="less_than"],
+      [data-operator-name="less_or_equal_than"],
+      [data-operator-name="contains"],
+      [data-operator-name="not_contains"],
+      [data-operator-name="contains_list"],
+      [data-operator-name="is_empty"],
+      [data-operator-name="is_not_empty"],
+      [data-operator-name="is_true"],
+      [data-operator-name="is_false"],
+      [data-operator-name="equals_rounded_down"],
+      [data-operator-name="is_in"],
+      [data-operator-name="isnt_in"],
+      [data-operator-name^="is_"],
+      /* visible, valid, clickable, hovered, pressed, focused, first_page, using_cookies... */
+      [data-operator-name^="isnt_"],
+      [data-operator-name^="uses_"],
+      /* password, 2fa */
+      [data-operator-name="has_2fa_backup_codes"],
+      [data-operator-name^="range_"] {
+
+        /* range_contains, range_overlaps... */
+        &,
+        & * {
+          color: rgb(255, 0, 255) !important;
+        }
+      }
+
+      /* 7. ORANGE: Literals and Static Values */
+      .dynamic.literal,
+      [data-operator-name="literal"] {
+
+        &,
+        & * {
+          color: rgb(255, 165, 0) !important;
+        }
+      }
+
+      /* Structural: Parentheses & Add Buttons */
+      .spot.parens {
+
+        &,
+        & * {
+          color: #888;
+        }
+      }
+
+      .dropdown-caption.add-button {
+
+        &,
+        & * {
+          color: #ccc;
+          font-style: italic;
+        }
+
+      }
+
+      .expression-composer>div {
+
+        /* Prevent making the background orange when editing */
+        &.nested.draft-state {
+          background-color: transparent;
+          border: solid 1px var(--b-orange-30);
+        }
+
+        &[style] {
+          /* Prevent border from jumping when starting to edit */
+          border: solid 1px transparent;
+
+          .spot {
+            padding-left: 2px;
+            padding-right: 2px;
+          }
+
+          &:after {
+            content: "❤️";
+            font-size: 4px;
+            position: relative;
+            top: -6px;
+          }
+        }
+      }
+    }
   }
-  
-  /* Heart Indicator */
-  .expression-composer > div[style]:after {
-    content: "❤️";
-    font-size: 4px;
-    position: relative;
-    top: -6px;
-  }
-}

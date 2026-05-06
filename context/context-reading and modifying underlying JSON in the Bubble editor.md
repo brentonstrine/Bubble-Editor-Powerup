@@ -21,8 +21,20 @@ The root entry point for the API is:
 window.appquery().app().json
 ```
 
+### Path Prefixes
+When looking at a Node's path (`node.path()`), you will encounter common prefixes that indicate the starting scope:
+*   **`%p3`**: Points to the standard Page components or the main application tree.
+*   **`%ed`**: Editor-level data container, often used for reusables or specific editor-only overlays.
+
 ### The Golden Rule of Reading Data
 **Never call `.raw()` on the root node.** Doing `window.appquery().app().json.raw()` forces the editor to decompress and load the *entire* application into the browser's memory at once. This will freeze the browser, spike server loads, and potentially get your extension blocked. Always navigate down to a specific branch or element before reading data.
+
+## Avoid Raw Calls in Production
+**Avoid using `.raw()` programmatically.** Calling `.raw()` is generally unecessary and is not performant. This is not just a warning for the full application root, but for specific elements as well. Because bubble elements can contain enormous trees of children and data sources, using `.raw()` in programmatic loops or automated scripts can create severe performance bottlenecks and massive memory leaks. 
+
+Instead, you should rapidly navigate the tree using Bubble's internal navigation methods or access the lightweight `node.cache`. 
+
+**The primary use case for `.raw()`** is for diagnostics and runtime investigation during development—-it's a tool to get a highly legible and structured JSON output to help you understand what data is available so you can safely query it using lighter methods.
 
 ---
 
@@ -35,6 +47,9 @@ Once you have a Node, you can traverse the tree using Bubble's internal navigati
 * **`node.path()`**: Returns the path showing where you currently are in the JSON tree.
 * **`node.exists()`**: Returns a boolean indicating if the current Node actually exists (useful for avoiding errors).
 * **`node.by_path('path.to.thing')`**: Jumps directly to a deeply nested Node using dot notation.
+
+> **💡 CRITICAL: The `.child()` Compression Trap**
+> When using `.child()` to navigate down the tree, you MUST use Bubble's internal compressed key names (e.g., `node.child('%p')`), *not* the decompressed names (e.g., `node.child('properties')`). Calling `.child()` with an uncompressed key will silently fail and return a non-existent node unless the element has already been manually decompressed via `.raw()`! 
 
 ### Utilizing Indexes for Fast Lookups
 Bubble maintains root-level maps to help you instantly find specific elements or pages without crawling the tree.
@@ -59,11 +74,159 @@ Bubble shrinks standard JSON keys into tiny symbols to save memory. Here is how 
 | **`%p`** | Properties (Coordinates, data sources) | `node.cache['%p']` |
 | **`%nm`** | Custom User-Defined Name | `node.cache['%p']['%nm']` (e.g., "Main Container") |
 | **`%x`** | Element Type | `node.cache['%x']` (e.g., "Group", "PageData") |
-| **`%el`** | Elements (Direct children IDs) | `node.cache['%el']` |
+| **`%el`** | Elements (Direct children object map) | `Object.keys(node.cache['%el'])` provides children internal keys |
 | **`%s1`** | Style | `node.cache['%s1']` |
+| **`%s`** or **`states`** | Conditionals (States) | `node.child('states')` holds Conditional rules, NOT `node.child('conditions')`! |
 | **`%h`, `%w`, `%l`, `%t`** | Height, Width, Left, Top | Inside `node.cache['%p']` |
 
 > **Warning:** Treat `node.cache` as strictly **Read-Only**. Modifying the cache directly will break Bubble's internal reactivity and fail to save to the database.
+
+## 6. Zombie Conditionals (State Arrays)
+
+When reading conditionals from the `states` (or `%s`) block via `child_names()`, be aware that Bubble **does not re-index** items if a user deletes a condition in the visual editor. Furthermore, even in active sets, indices may be non-sequential (e.g., State 0 and State 2 with no State 1).
+
+If a user creates three conditions (indexes `0`, `1`, `2`) and deletes the first two, Bubble's `child_names()` will still return an array of `['0', '1', '2']`.
+
+*   Indexes `0` and `1` will be "zombies" (empty objects, lacking a `.condition` or `%c` key).
+*   Index `2` will contain the valid expression.
+
+When traversing the DOM to map visual rows to internal JSON states, you must sequentially filter the ID array to ignore these zombies:
+```javascript
+// Filter out zombies before mapping visual DOM Index to Bubble Index
+let conditionIds = elementNode.child('%s').child_names();
+conditionIds = conditionIds.filter(id => {
+    const rawState = elementNode.child('%s').child(id).raw() || {};
+    return rawState.hasOwnProperty('%c') || rawState.hasOwnProperty('condition');
+});
+```
+
+## 7. Compressed JSON Key Dictionary (Cheat Sheet)
+
+Bubble violently compresses its JSON tree for production/app apps. Here are the known keys:
+*   `%s`: **States / Conditionals**. Contains the logic states attached to an element. (Uncompressed: `states`)
+*   `%s1`: **Style ID**. The ID string of the visual style class applied to the element. (Uncompressed: `style`)
+*   `%c`: **Condition expression**. The actual logical expression inside a conditional state. (Uncompressed: `condition`)
+*   `%p`: **Properties**. The main wrapper around the element's distinct settings. (Uncompressed: `properties`)
+*   `%el`: **Elements (Children)**. The container holding nested components. (Uncompressed: `elements`)
+*   `%gt`: **Group Type**. The data type designation for a container. (Uncompressed: `group_type`)
+*   `%3`: **Text Expression**. The root of a text content property. (Uncompressed: `text`)
+*   `%e`: **Entries**. The child entries inside a Text Expression or generic expression chain. (Uncompressed: `entries`)
+*   `%ps`: **Placeholder**. Used heavily in inputs for placeholder definitions. (Uncompressed: `placeholder`)
+*   `%ds`: **Data Source**. The root object for binding an element's data context or search output. (Uncompressed: `data_source`)
+*   `%n`: **Next**. The crucial link in chaining Bubble expression logic. (Uncompressed: `next`)
+*   `%9i`: **Icon Name**. The specific icon string. (Uncompressed: `icon`)
+*   `%nm`: **Custom Name**. The user-defined string name of the node. 
+*   `%dn`: **Default Name**. The system-generated backup name. 
+*   `%x`: **Type**. The class designation of the node, frequently determining data types or expression behavior (e.g., `TextExpression`, `CurrentUser`, `Search`, `CustomElement`).
+*   `%iv`: **Is Visible**. Boolean flag controlling element visibility. Commonly found overriding standard visibility inside a conditionals `%p` array. (Uncompressed: `is_visible`)
+*   `%z`: **Z-Index**. Structural stacking order coordinate. (Uncompressed: `zindex`)
+*   `%cp`: **Current Parent**. Identifier for the structural parent node. (Uncompressed: `current_parent`)
+*   `%ei`: **Element ID**. The system string pointer used within workflows or dynamic targets referencing specific elements. (Uncompressed: `element_id`)
+
+### Internal Quirks and Structural Observations
+*   **Search Constraints (`data_source.properties.constraints`)**: A Data Source of type `Search` stores its constraints as an indexed dictionary (e.g., `"0"`, `"1"`). Each constraint defines `key` (Field Name), `value` (The evaluated Bubble Expression), and `constraint_type` (e.g., "equals", "not contains").
+*   **Repeating Group "CELL" Pattern**: In Bubble's internal structure for Repeating Groups, the direct child of the RG is often a structural "CELL" group. This group typically uses an `ElementParent` data source. Because of Bubble's scope rules, inner elements use `GetElement` targeting the "CELL" group to maintain access to "Current Cell's Thing" data logic even when nested deeply within other containers.
+*   **Auto-Binding Inputs**: Inputs store Auto-Binding setup internally, identifying the target field via `bind_field` and whether a success notification is shown to a specific element by `alert_element`.
+*   **Reusable Element Parameters**: When looking at a Reusable Element instantiated on a page, Bubble handles custom properties/parameters via keys that prefix with `param_` (e.g., `param_cnSRm`), linking the internal definition variable to the provided expression `OneOptionValue`. 
+*   **Field Naming Grammar**: Method names (Messages) often follow a strict `{field_name}_{type_modifier}_{data_type}` suffix pattern (e.g., `tags_list_option_featureset_tag`).
+*   **Context-Dependent/False-Positive Keys**: When mapping JSON keys visually, be careful of "primitive collisions". If `height: 0` and `min_width: 0`, naive value-matching might associate `%h` with `min_width` instead of `height`. Furthermore, depending on an element's configuration (Fixed vs Responsive width), numerical property usages may shift significance under the hood.
+
+---
+
+## 8. Expression Chain Architecture
+
+Bubble expressions are **recursive linked lists**. Each node in the chain has a `type` (or `%x`), and optionally a `next` (or `%n`) pointer to the next operation. The chain reads left-to-right, exactly mirroring the visual expression builder in the Bubble editor.
+
+### Chain Structure
+```
+[RootType] → .method1() → .method2(args) → .method3()
+```
+In JSON, this looks like:
+```json
+{
+  "type": "CurrentUser",
+  "next": {
+    "type": "Message",
+    "name": "current_seat_custom_seat",
+    "next": {
+      "type": "Message",
+      "name": "team_custom_team"
+    }
+  }
+}
+```
+
+### Known Root Types & Global Operations
+For a complete, searchable dictionary of **Human Labels ↔ Internal Keys**, refer to the [Bubble Rosetta Stone](file:///Users/dev/Documents/GitHub/CodelessLove/Bubble-Powerup/context/bubble_rosetta_stone.md).
+
+#### Expression Starting Points (Roots)
+Common roots include `CurrentUser`, `GetElement`, `Search`, `PageData`, and `PrimitiveLiteral`. Each defines the initial context for the chain.
+
+#### Method Chaining (Messages)
+The `Message` type is used for nearly every operation after the root. Its `name` property (e.g., `equals`, `count`, `first_element`) defines the logic. 
+
+> **Naming Rule:** Method names often encode field names and their data types (e.g., `tags_list_option_featureset_tag`).
+
+### Type-Specific Logic: Boolean vs. Yes/No
+Bubble enforces a strict separation between logical "Booleans" and database "Yes/No" types. This determines what operators can follow them:
+
+*   **Boolean Chain (internal states):** Supports logical operators like `and` or `or`.
+*   **Yes/No Chain (DB types):** Supports comparison operators like `is yes`, `is no`, and `is not`.
+
+### Custom Field Naming Grammar
+Internal keys for user-defined fields follow a predictable pattern:
+*   **Single Reference:** `{fieldname}_custom_{typename}`
+*   **List Reference:** `{fieldname}_list_custom_{typename}`
+
+### Boolean Chaining Flow
+When multiple conditions are joined, Bubble uses a pipeline flow. For example, "If [ParamX] is true AND [This Element] is hovered":
+1.  Start with `[GetElement]` targeting the param.
+2.  Call `.is_true` to resolve the param.
+3.  Chain `.and_` which takes a full `[ThisElement]` -> `.is_hovered` expression as its `args`.
+
+### Args Patterns
+The `args` (or `%a`) property on a `Message` carries the argument to the operation. Its shape varies:
+
+| Pattern | Example | Meaning |
+| :--- | :--- | :--- |
+| Literal number | `"args": 1` | Direct numeric value |
+| Literal string | `"args": "true"` | Direct string value |
+| Expression object | `"args": { "type": "GetElement", ... }` | A full nested expression (common in `and_` or `contains`) |
+
+### `is_slidable`
+This flag appears on most expression chain nodes. It is almost always `false`. List-manipulation methods that change order or filter content, such as **`.sorted()`** and **`.filtered()`**, are notable exceptions where `is_slidable: true`.
+
+### Shared Architecture: Search vs. Filter
+The `Search` root type and the `.filtered` message name share the exact same **`constraints`** architecture. Both store logic rules in `properties.constraints` as an indexed dictionary of objects containing `key`, `value`, and `constraint_type`. This demonstrates that Bubble's querying engine is reused for both database and in-memory list operations.
+
+### Where Expressions Live on an Element
+Expressions can appear in multiple locations within a single element's JSON:
+
+*   `properties.data_source` — The element's data binding
+*   `properties.text` (or `%3`) — Text content (as a `TextExpression`)
+*   `properties.placeholder` (or `%ps`) — Input placeholder text
+*   `states[N].condition` (or `%s[N].%c`) — Conditional logic
+*   `states[N].properties.*` — Override values within conditionals (can themselves be expressions)
+*   `properties.param_*` — Reusable element parameter bindings
+*   `properties.unique_id` — Element ID attribute (as a `TextExpression`)
+
+### Workflow Actions
+Workflow action expressions are **NOT** stored on the element itself. They are stored separately in Bubble's JSON tree. Inspecting a Button element, for example, will show its text and conditionals but not its click actions.
+
+---
+
+## 9. Custom States
+
+Custom States are stored in a `custom_states` dictionary on the element node. Each state consists of an internal ID (the key) and a configuration object:
+
+```json
+"is_checked_": {
+  "display": "is_checked",   // The user-friendly State Name
+  "value": "boolean",        // The data type
+  "default_val": false,      // Initial value
+  "make_static": true
+}
+```
 
 ---
 
@@ -147,7 +310,15 @@ If an element has the class `CustomElement`, it is a Reusable Component. These o
 
 ---
 
-## 7. Developer Cheat Sheet
+## 8. Lessons Learned & Edge Cases
+
+### Reusable Element Extraction (Lazy Caching)
+When performing recursive extractions (like building an element list), you may find that **Reusable Elements** (often labeled `CustomDefinition` internally) do not populate their `%el` dictionary in the root `node.cache`. 
+* **The Symptom:** `node.cache['%el']` returns undefined, making it look like the Reusable has no children.
+* **The Solution:** Use `node.child('%el').child_names()` instead. This forces the engine to look up the children without requiring a heavy `.raw()` call, effectively "warming up" the cache for that specific branch. Use `%el` as the primary key and fallback to `elements` for older uncompressed app versions.
+---
+
+## 9. Developer Cheat Sheet
 
 **Get the ID of the currently selected element:**
 ```javascript
@@ -162,6 +333,12 @@ window.appquery().app().json.by_path(window.appquery().app().json.child('_index'
 **Get the raw JSON of the currently selected element:**
 ```javascript
 window.appquery().app().json.by_path(window.appquery().app().json.child('_index').child('id_to_path').raw()[document.querySelector(".element.selected > .inner-element").id]).raw()
+```
+
+**Get the raw JSON of the currently selected element:**
+```javascript
+var elementID = document.querySelector(".element.selected > .inner-element").id;
+window.appquery().app().json.by_path(window.appquery().app().json.child('_index').child('id_to_path').raw()[elementID]).raw()
 ```
 
 **Write data directly to the currently selected element:**
