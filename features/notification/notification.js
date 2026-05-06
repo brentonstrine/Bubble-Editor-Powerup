@@ -1,5 +1,5 @@
 window.loadedCodelessLoveScripts ||= {};
-(function() {
+(function () {
   const thisScriptKey = "notification";
   if (window.loadedCodelessLoveScripts[thisScriptKey] === "loaded") {
     console.warn(`❤️${thisScriptKey} tried to load, but it's value is already ${window.loadedCodelessLoveScripts[thisScriptKey]}`);
@@ -51,61 +51,12 @@ window.loadedCodelessLoveScripts ||= {};
             <h2 class="section-header">New Features</h2>
             <ul class="features-list">
                 <li>
-                    <b>Syntax Highlighting</b>
-                    <p class="feature-description">Expressions are now easier to read with colored operators.</p>
-                    <div class="feature-contributors">Contributors: Brenton Strine</div>
+                    <b>Sunsetting Feature: API Connector Sidebar Link</b>
+                    <p class="feature-description">Hooray, Bubble implemented this natively, so we don't need it anymore! Thanks for working on this feature: Rafa and Brenton.</p>
                 </li>
                 <li>
-                    <b>Dark Mode</b>
-                    <p class="feature-description">So you can look like a leet hacker while programming at night.</p>
-                    <div class="feature-contributors">Contributors: Brenton Strine</div>
-                </li>
-                <li>
-                    <b>Expression Prank Depranker</b>
-                    <p class="feature-description">In some circumstances clicking on the beginning of an expression would delete your expression. This fixes that.</p>
-                    <div class="feature-contributors">Contributors: Brenton Strine</div>
-                </li>
-                <li>
-                    <b>Popup Search and Filtering</b>
-                    <p class="feature-description">Find features easier with searching and filtering.</p>
-                    <div class="feature-contributors">Contributors: Rico Trevisan</div>
-                </li>
-                <li>
-                    <b>Popup Refinement</b>
-                    <p class="feature-description">Add collapsible accordions to categories and tighten up the spacing.</p>
-                    <div class="feature-contributors">Contributors: Rico Trevisan</div>
-                </li>
-                <li>
-                    <b>Toggle Debug Mode</b>
-                    <p class="feature-description">In runtime, toggle debug_mode on and off through the Powerup popup.</p>
-                    <div class="feature-contributors">Contributors: Brenton Strine</div>
-                </li>
-                <li>
-                    <b>Contributor Credit</b>
-                    <p class="feature-description">Info on who contributed to which features, so you can say "thanks!"</p>
-                </li>
-            </ul>
-            <h2 class="section-header">Bug Fixes</h2>
-            <ul class="fixes-list">
-                <li>
-                  <b>Bulk Branch Delete</b>
-                  <p class="feature-description">Should now appear inline again as well as in the popup under the feature card.</p>
-                </li>
-                <li>
-                  <b>Search Bookmark</b>
-                  <p class="feature-description">Was broken before but should work again now.</p>
-                </li>
-                <li>
-                  <b>Powerup Feature Changes Refresh Buttons</b>
-                  <p class="feature-description">Fix refresh buttons so you can easily refresh the tab(s) after making changes to your feature configuration.</p>
-                </li>
-                <li>
-                  <b>Removed the feature "Maximize App Interface Manager dropdown in top menubar"</b>
-                  <p class="feature-description">This feature was broken due to a Bubble update. The new Bubble menu is much better, making this feature unecessary.</p>
-                </li>
-                <li>
-                  <b>General Fixes</b>
-                  <p class="feature-description">Made general improvements to extension organizatoin and set the foundation for future contributions.</p>
+                    <b>Sunsetting Feature: Make Backend Workflows Button Red</b>
+                    <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton.</p>
                 </li>
             </ul>
             <p class="❤️note">Thank you for using the Powerup extension! You can help by suggesting ideas, sharing with a friend, or even contributing new features!

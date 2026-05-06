@@ -254,18 +254,6 @@
     ]
   },
   {
-    "key": "expression_analyzer",
-    "category": "Expressions",
-    "name": "Expression Analyzer",
-    "description": "Right-click a dynamic expression to open a tool that deconstructs and visualizes it in a clear, hierarchical view, making it easier to read and debug.",
-    "jsFile": "features/expression_analyzer/expression_analyzer.js",
-    "cssFile": "features/expression_analyzer/expression_analyzer.css",
-    "default": true,
-    "contributors": [
-      "brenton"
-    ]
-  },
-  {
     "key": "property_editor_expression_composers_full_width",
     "category": "Expression Composers",
     "name": "Full Width Expression Composers",
@@ -286,29 +274,6 @@
     "contributors": [
       "brenton",
       "george"
-    ]
-  },
-  {
-    "key": "sidebar_link_api_connector",
-    "category": "Sidebar",
-    "name": "Add API Connector link to sidebar",
-    "description": "Adds a link to the sidebar which will take you directly to the API Connector plugin.",
-    "jsFile": "features/sidebar-link-api-connector/sidebar-link-api-connector.js",
-    "default": true,
-    "contributors": [
-      "brenton",
-      "rafa"
-    ]
-  },
-  {
-    "key": "sidebar_red_backend_workflows",
-    "category": "Sidebar",
-    "name": "Make Backend Workflows Button Red",
-    "description": "Makes the Backend Workflow button red so you stop accidentally clicking it.",
-    "cssFile": "features/sidebar_red_backend_workflows/sidebar_red_backend_workflows.css",
-    "default": false,
-    "contributors": [
-      "brenton"
     ]
   },
   {
@@ -508,18 +473,6 @@
     "description": "Allows you to drag and drop style variable rows to rearrange their order in the Styles tab.",
     "cssFile": "features/styles-drag-rearrange/styles-drag-rearrange.css",
     "jsFile": "features/styles-drag-rearrange/styles-drag-rearrange.js",
-    "default": true,
-    "contributors": [
-      "rico"
-    ]
-  },
-  {
-    "key": "advanced_expression_composer",
-    "category": "Expressions",
-    "name": "Advanced Expression Composer",
-    "description": "A type-aware, non-linear expression editor for Bubble that replaces the native interface with a high-fidelity popup. Features proximity-based drag and drop, stealth slots, and automatic type validation.",
-    "cssFile": "features/expression_advanced_composer/expression_advanced_composer.css",
-    "jsFile": "features/expression_advanced_composer/expression_advanced_composer.js",
     "default": true,
     "contributors": [
       "rico"
