@@ -76,6 +76,15 @@
 
     const displayValue = owner.node.display?.() ?? FALLBACK_TITLE;
     owner.canvas.text(displayValue);
+
+    const hasCustomDisplay = getStoredDisplay(owner.node) != null;
+    if (owner.canvas.attr) {
+      if (hasCustomDisplay) {
+        owner.canvas.attr("data-cl-arbitrary-text-custom-display", "true");
+      } else {
+        owner.canvas.removeAttr("data-cl-arbitrary-text-custom-display");
+      }
+    }
   }
 
   // ArbitraryText.display() is the single source of truth for token text.

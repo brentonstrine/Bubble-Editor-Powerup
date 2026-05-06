@@ -36,3 +36,18 @@
   border-color: var(--b-border-focus);
   box-shadow: none !important;
 }
+
+/* Heart indicator to the right of the Display input */
+.expression-popover.ppe.arbitrary-text-popover [data-cl-arbitrary-text-display-row="input"] .item-wrapper {
+  position: relative;
+}
+
+❤️ codelesslove,
+/* Heart Indicator */
+.expression-popover.ppe.arbitrary-text-popover [data-cl-arbitrary-text-display-row="input"] .item-wrapper::after {
+  content: "❤️";
+  font-size: 4px;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
