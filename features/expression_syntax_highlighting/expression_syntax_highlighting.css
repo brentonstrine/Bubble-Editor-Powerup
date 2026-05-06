@@ -11,7 +11,6 @@ body {
     /* Generic Infix Property (overwritten in some more specific cases below) */
     .nested span[data-prop-name=next] {
       color: purple;
-      color: yellow;
     }
 
     /* Data Sources are Blue */
@@ -39,7 +38,6 @@ body {
     .nested span[data-prop-name=data_source] {
       color: rgb(10, 105, 230);
       font-weight: 700;
-      color: yellow;
     }
 
     /* Literals are Orange */
@@ -47,21 +45,18 @@ body {
     .nested.nested span.dynamic.literal {
       /* don't be tempted to put a ❤️ here */
       color: orange;
-      color: yellow;
     }
 
     /* Property Accessors */
     /* EASB */
     .nested.nested span.❤️property {
       color: dodgerblue;
-      color: yellow;
     }
 
     /* Chained Operators */
     /* EASB */
     .nested.nested span.❤️chained {
       color: green;
-      color: yellow;
 
     }
 
@@ -69,7 +64,6 @@ body {
     /* EASB */
     .nested.nested span.❤️comparison {
       color: Magenta;
-      color: yellow;
     }
 
     /* Logical */
@@ -79,14 +73,9 @@ body {
       font-weight: 800;
 
       margin: 0 .5em;
-      color: yellow;
     }
 
-
-
-
-
-
+    /* New Expression Highlighting */
 
 
     &.property-editor.property-editor.property-editor.property-editor.property-editor.property-editor,
@@ -109,7 +98,8 @@ body {
       [data-datasource-name]:not([data-datasource-name="Message"]):not([data-datasource-name="PreviousStep"]),
       [data-datasource-name="Search"],
       [data-datasource-name="GetElement"],
-      [data-datasource-name="GetParamFromUrl"] {
+      [data-datasource-name="GetParamFromUrl"],
+      [data-datasource-name="PreviousStep"] {
 
         &,
         & * {
@@ -129,11 +119,15 @@ body {
       [data-operator-name="url"],
       [data-operator-name="email"],
       [data-operator-name="slug"],
+      [data-operator-name="active_subscriptions"],
+      [data-operator-name="snap_current"],
+      [data-operator-name="snap_default"],
       [data-operator-name="selected_choices"],
       [data-operator-name="page_number"],
-      [data-operator-name="id_link"] {
+      [data-operator-name="id_link"],
+      /* 's link */
+      [data-operator-name="_id"] {
 
-        /* 's link */
         &,
         & * {
           color: rgb(30, 144, 255) !important;
@@ -165,17 +159,29 @@ body {
       [data-operator-name="list_from"],
       [data-operator-name="unique"],
       [data-operator-name="make_static"],
+      [data-operator-name="plus_element"],
+      [data-operator-name="minus_element"],
       [data-operator-name="trimmed"],
       [data-operator-name^="truncated"],
       [data-operator-name="split_by"],
       [data-operator-name="find_replace"],
       [data-operator-name="format_as_text"],
+      [data-operator-name^="formatted_"],
+      /* address, as_json_safe... */
+      [data-operator-name$="_link"],
+      /* google_map_link, apple_map_link, id_link... */
       [data-operator-name="round"],
       [data-operator-name="floor"],
       [data-operator-name="ceil"],
-      [data-operator-name="extract_from_date"],
+      [data-operator-name="distance_from"],
+      [data-operator-name="imgix_treatment"],
+      [data-operator-name="ranked_by"],
+      [data-operator-name^="extract_"],
+      /* from_date, from_text, regex... */
       [data-operator-name="rounded_down"],
-      [data-datasource-name="Message"] {
+      [data-datasource-name="Message"],
+      [data-operator-name="saved_s3"],
+      [data-operator-name="file_name"] {
 
         /* Slidable popover ops like :filtered, :group by, :formatted as text */
         &,
@@ -226,9 +232,15 @@ body {
       [data-operator-name="is_not_empty"],
       [data-operator-name="is_true"],
       [data-operator-name="is_false"],
+      [data-operator-name="equals_rounded_down"],
+      [data-operator-name="is_in"],
+      [data-operator-name="isnt_in"],
       [data-operator-name^="is_"],
-      /* visible, valid, clickable, hovered, pressed, focused, first_page... */
+      /* visible, valid, clickable, hovered, pressed, focused, first_page, using_cookies... */
       [data-operator-name^="isnt_"],
+      [data-operator-name^="uses_"],
+      /* password, 2fa */
+      [data-operator-name="has_2fa_backup_codes"],
       [data-operator-name^="range_"] {
 
         /* range_contains, range_overlaps... */
@@ -267,17 +279,30 @@ body {
 
       }
 
-      .nested.draft-state {
-        background-color: transparent;
-        border: solid 1px var(--b-orange-30);
-      }
+      .expression-composer>div {
 
-      /* Heart Indicator */
-      .expression-composer>div[style]:after {
-        content: "❤️";
-        font-size: 4px;
-        position: relative;
-        top: -6px;
+        /* Prevent making the background orange when editing */
+        &.nested.draft-state {
+          background-color: transparent;
+          border: solid 1px var(--b-orange-30);
+        }
+
+        &[style] {
+          /* Prevent border from jumping when starting to edit */
+          border: solid 1px transparent;
+
+          .spot {
+            padding-left: 2px;
+            padding-right: 2px;
+          }
+
+          &:after {
+            content: "❤️";
+            font-size: 4px;
+            position: relative;
+            top: -6px;
+          }
+        }
       }
     }
   }
