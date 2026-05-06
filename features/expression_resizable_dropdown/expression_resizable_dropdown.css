@@ -1,0 +1,9 @@
+/* Resizable Expression Dropdown  */
+❤️ .codelesslove,
+body {
+  div.dropdown-items-container[role="listbox"] {
+    resize: both;
+    overflow: auto;
+    scrollbar-width: thin;
+  }
+}

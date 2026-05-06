@@ -481,10 +481,15 @@
     "category": "Style Tab",
     "name": "Drag to Rearrange Style Variables",
     "description": "Allows you to drag and drop style variable rows to rearrange their order in the Styles tab.",
-    "cssFile": "features/styles-drag-rearrange/styles-drag-rearrange.css",
-    "jsFile": "features/styles-drag-rearrange/styles-drag-rearrange.js",
+    "key": "resizable_expression_dropdown",
+    "category": "Expression Composers",
+    "name": "Resizable Expression Dropdown",
+    "description": "Allows you to resize the expression dropdown in the editor.",
+    "cssFile": "features/expression_resizable_dropdown/expression_resizable_dropdown.css",
     "default": true,
-    "contributors": ["rico"]
+    "contributors": [
+      "brenton"
+    ]
   },
   {
     "key": "delete_unused_colors",
@@ -494,6 +499,8 @@
     "cssFile": "features/delete_unused_colors/delete_unused_colors.css",
     "jsFile": "features/delete_unused_colors/delete_unused_colors.js",
     "default": true,
-    "contributors": ["thomas"]
+    "contributors": [
+      "thomas"
+    ]
   }
 ]

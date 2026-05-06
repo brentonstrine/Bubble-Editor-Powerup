@@ -56,11 +56,19 @@ window.loadedCodelessLoveScripts ||= {};
                 </li>
                 <li>
                     <b>Delete Unused Colors</b>
-                    <p class="feature-description">List and delete color variables unused in the app. Thanks for working on this feature: Rafa Chavantes.</p>
+                    <p class="feature-description">List and delete color variables unused in the app. Thanks for working on this feature: Thomas Mey.</p>
+                </li>
+                <li>
+                    <b>Resizable Expression Dropdown</b>
+                    <p class="feature-description">Resize the expression dropdown in the editor. Thanks for working on this feature: Brenton Strine.</p>
                 </li>
                 <li>
                     <b>Sunsetting Feature: Make Backend Workflows Button Red</b>
                     <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton Strine.</p>
+                </li>
+                <li>
+                    <b>Sunsetting Feature: Drag to Rearrange Style Variables</b>
+                    <p class="feature-description">Bubble has implemented this! Thanks for working on this feature: Rico Trevisan.</p>
                 </li>
                 <li>
                     <b>Sunsetting Feature: API Connector Sidebar Link</b>
