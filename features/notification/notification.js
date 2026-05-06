@@ -51,6 +51,13 @@ window.loadedCodelessLoveScripts ||= {};
             <h2 class="section-header">New Features</h2>
             <ul class="features-list">
                 <li>
+                    <b>Delete Unused Colors</b>
+                    <p class="feature-description">List and delete color variables unused in the app. Thanks for working on this feature: Rafa.</p>
+                <li>
+                    <b>Sunsetting Feature: Make Backend Workflows Button Red</b>
+                    <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton.</p>
+                </li>
+                <li>
                     <b>Sunsetting Feature: API Connector Sidebar Link</b>
                     <p class="feature-description">Hooray, Bubble implemented this natively, so we don't need it anymore! Thanks for working on this feature: Rafa and Brenton.</p>
                 </li>
