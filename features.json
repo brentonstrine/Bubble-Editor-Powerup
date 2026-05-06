@@ -477,10 +477,6 @@
     ]
   },
   {
-    "key": "styles_drag_rearrange",
-    "category": "Style Tab",
-    "name": "Drag to Rearrange Style Variables",
-    "description": "Allows you to drag and drop style variable rows to rearrange their order in the Styles tab.",
     "key": "resizable_expression_dropdown",
     "category": "Expression Composers",
     "name": "Resizable Expression Dropdown",
