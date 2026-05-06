@@ -51,19 +51,24 @@ window.loadedCodelessLoveScripts ||= {};
             <h2 class="section-header">New Features</h2>
             <ul class="features-list">
                 <li>
+                    <b>Rename Arbitrary Text</b>
+                    <p class="feature-description">Adds an optional Display field to Arbitrary text expressions so you can rename the token label without changing its value. Thanks for working on this feature: George Collier.</p>
+                </li>
+                <li>
                     <b>Delete Unused Colors</b>
-                    <p class="feature-description">List and delete color variables unused in the app. Thanks for working on this feature: Rafa.</p>
+                    <p class="feature-description">List and delete color variables unused in the app. Thanks for working on this feature: Rafa Chavantes.</p>
+                </li>
                 <li>
                     <b>Sunsetting Feature: Make Backend Workflows Button Red</b>
-                    <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton.</p>
+                    <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton Strine.</p>
                 </li>
                 <li>
                     <b>Sunsetting Feature: API Connector Sidebar Link</b>
-                    <p class="feature-description">Hooray, Bubble implemented this natively, so we don't need it anymore! Thanks for working on this feature: Rafa and Brenton.</p>
+                    <p class="feature-description">Hooray, Bubble implemented this natively, so we don't need it anymore! Thanks for working on this feature: Rafa Chavantes and Brenton Strine.</p>
                 </li>
                 <li>
                     <b>Sunsetting Feature: Make Backend Workflows Button Red</b>
-                    <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton.</p>
+                    <p class="feature-description">Since we've all had time to adjust, this no longer needs to be red. Thanks for working on this feature: Brenton Strine.</p>
                 </li>
             </ul>
             <p class="❤️note">Thank you for using the Powerup extension! You can help by suggesting ideas, sharing with a friend, or even contributing new features!
